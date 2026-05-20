@@ -15,12 +15,12 @@ interface SharePreset {
 }
 
 const SHARE_PRESETS: SharePreset[] = [
-  { label: 'iMessage', emoji: '💭', width: 25, mode: 'braille' },
-  { label: 'WhatsApp', emoji: '💬', width: 35, mode: 'braille' },
-  { label: 'Twitter/X', emoji: '𝕏', width: 40, mode: 'braille' },
-  { label: 'Telegram', emoji: '✈️', width: 45, mode: 'braille' },
-  { label: 'Discord', emoji: '🎮', width: 50, mode: 'braille' },
-  { label: 'Reddit', emoji: '🤖', width: 55, mode: 'braille' },
+  { label: 'iMessage', emoji: '💭', width: 22, mode: 'braille' },
+  { label: 'WhatsApp', emoji: '💬', width: 28, mode: 'braille' },
+  { label: 'Twitter/X', emoji: '𝕏', width: 35, mode: 'braille' },
+  { label: 'Telegram', emoji: '✈️', width: 38, mode: 'braille' },
+  { label: 'Discord', emoji: '🎮', width: 45, mode: 'braille' },
+  { label: 'Reddit', emoji: '🤖', width: 50, mode: 'braille' },
   { label: 'Desktop', emoji: '🖥️', width: 80, mode: 'braille' },
 ];
 

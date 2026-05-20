@@ -80,6 +80,11 @@ Copy-Pasta/
 - [ ] **Phase 5**: Social — gallery, likes, leaderboard
 - [ ] **Phase 6**: Production — CI/CD, cloud deployment, hardening
 
+## 📚 Documentation
+
+- **[Project Plan](docs/PLAN.md)** — Phase-by-phase roadmap with task tracking
+- **[Implementation Guide](docs/IMPLEMENTATION.md)** — Architecture, API reference, design decisions
+
 ## 🤝 Contributing
 
 This is a personal learning project, but PRs and ideas are welcome!

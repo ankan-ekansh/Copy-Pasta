@@ -79,6 +79,7 @@ func ConvertBraille(img image.Image, opts BrailleOptions) string {
 	builder.Grow((width + 1) * charRows)
 
 	for charY := 0; charY < charRows; charY++ {
+		line := make([]rune, width)
 		for charX := 0; charX < width; charX++ {
 			px := charX * 2
 			py := charY * 4
@@ -102,8 +103,11 @@ func ConvertBraille(img image.Image, opts BrailleOptions) string {
 				}
 			}
 
-			builder.WriteRune(brailleOffset)
+			line[charX] = brailleOffset
 		}
+		// Trim trailing empty braille chars (U+2800) to shorten lines
+		trimmed := strings.TrimRight(string(line), "\u2800")
+		builder.WriteString(trimmed)
 		if charY < charRows-1 {
 			builder.WriteByte('\n')
 		}

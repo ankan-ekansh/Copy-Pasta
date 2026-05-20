@@ -50,6 +50,8 @@ func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {
 	edgeMix := 0.0  // will use converter default (0.3) when left at 0
 	contrast := 0.0 // will use converter default (1.3) when left at 0
 	charRamp := ""
+	mode := "ascii"    // "ascii" or "braille"
+	threshold := 0.0   // braille threshold (0 = auto Otsu)
 	var img image.Image
 	foundImage := false
 
@@ -151,12 +153,43 @@ func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {
 				if value != "" {
 					charRamp = value
 				}
+			case "mode":
+				value, readErr := readField(part)
+				if readErr != nil {
+					err = readErr
+					return
+				}
+				if value == "braille" || value == "ascii" {
+					mode = value
+				} else if value != "" {
+					err = errors.New("mode must be 'ascii' or 'braille'")
+					return
+				}
+			case "threshold":
+				value, readErr := readField(part)
+				if readErr != nil {
+					err = readErr
+					return
+				}
+				if value == "" {
+					return
+				}
+				parsedThreshold, parseErr := strconv.ParseFloat(value, 64)
+				if parseErr != nil || parsedThreshold < 0 || parsedThreshold > 1 {
+					err = errors.New("threshold must be a float between 0 and 1")
+					return
+				}
+				threshold = parsedThreshold
 			}
 		}()
 
 		if err != nil {
 			switch err.Error() {
-			case "width must be a positive integer", "invert must be a boolean", "invalid or unsupported image":
+			case "width must be a positive integer", "invert must be a boolean",
+				"invalid or unsupported image", "mode must be 'ascii' or 'braille'",
+				"threshold must be a float between 0 and 1",
+				"edgeMix must be a float between 0 and 1",
+				"contrast must be a float between 0.1 and 3.0":
 				writeError(w, http.StatusBadRequest, err.Error())
 			default:
 				writeError(w, http.StatusInternalServerError, "internal server error")
@@ -170,13 +203,26 @@ func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ascii := converter.Convert(img, converter.Options{
-		Width:    width,
-		Invert:   invert,
-		EdgeMix:  edgeMix,
-		Contrast: contrast,
-		CharRamp: charRamp,
-	})
+	var ascii string
+	if mode == "braille" {
+		brailleWidth := width
+		if brailleWidth == converter.DefaultWidth {
+			brailleWidth = 80 // better default for braille
+		}
+		ascii = converter.ConvertBraille(img, converter.BrailleOptions{
+			Width:     brailleWidth,
+			Threshold: threshold,
+			Invert:    invert,
+		})
+	} else {
+		ascii = converter.Convert(img, converter.Options{
+			Width:    width,
+			Invert:   invert,
+			EdgeMix:  edgeMix,
+			Contrast: contrast,
+			CharRamp: charRamp,
+		})
+	}
 	trimmed := strings.TrimRight(ascii, "\n")
 	height := 0
 	if trimmed != "" {

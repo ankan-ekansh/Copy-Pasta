@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { convertImage, type ConvertResponse } from './api/convert';
+import { convertImage, type ConvertResponse, type ConvertMode } from './api/convert';
 import { AsciiOutput } from './components/AsciiOutput';
 import { ImageUploader } from './components/ImageUploader';
 import './App.css';
 
 const DEFAULT_WIDTH = 150;
+const DEFAULT_BRAILLE_WIDTH = 80;
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [invert, setInvert] = useState(false);
+  const [mode, setMode] = useState<ConvertMode>('braille');
   const [result, setResult] = useState<ConvertResponse | null>(null);
   const [error, setError] = useState('');
   const [isConverting, setIsConverting] = useState(false);
@@ -23,7 +25,11 @@ function App() {
     try {
       setIsConverting(true);
       setError('');
-      const response = await convertImage(file, width, invert);
+      const response = await convertImage(file, {
+        width: mode === 'braille' ? Math.min(width, DEFAULT_BRAILLE_WIDTH) : width,
+        invert,
+        mode,
+      });
       setResult(response);
     } catch (conversionError) {
       setResult(null);
@@ -101,6 +107,31 @@ function App() {
               />
               <span>Invert brightness for dramatic meme energy</span>
             </label>
+
+            <div className="mode-toggle">
+              <p className="mode-label">Conversion mode</p>
+              <div className="mode-buttons">
+                <button
+                  type="button"
+                  className={`mode-btn ${mode === 'ascii' ? 'active' : ''}`}
+                  onClick={() => setMode('ascii')}
+                >
+                  ABC ASCII
+                </button>
+                <button
+                  type="button"
+                  className={`mode-btn ${mode === 'braille' ? 'active' : ''}`}
+                  onClick={() => setMode('braille')}
+                >
+                  ⠿ Braille
+                </button>
+              </div>
+              <p className="mode-hint">
+                {mode === 'braille'
+                  ? 'Unicode Braille — higher resolution, great for recognizable memes'
+                  : 'Classic ASCII chars — retro terminal aesthetic'}
+              </p>
+            </div>
 
             <button
               type="button"

@@ -59,9 +59,40 @@ The core ASCII art engine — produces high-quality output using adaptive image 
 
 **Key design insight:** The default 12-character ramp uses only "isotropic" characters (those that look the same regardless of neighbors). Characters like `|`, `/`, `\`, `(`, `)` create directional visual noise and are excluded from the default. They're available in `RampFull` for specialized use at large widths.
 
+### Braille Converter: `backend/internal/converter/braille.go`
+A **higher-resolution** conversion mode using Unicode Braille characters (U+2800–U+28FF).
+
+**How it works:**
+Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character cell). This gives dramatically higher effective resolution than brightness-to-char mapping — a 80-character-wide output has 160 effective horizontal pixels.
+
+**Algorithm:**
+1. **Resize** — Scale image so width in pixels = `Width × 2`, height adjusted with aspect ratio correction (÷4 rows per char)
+2. **Grayscale** — Convert to gamma-correct luminance (same BT.709 formula as ASCII mode)
+3. **Otsu's thresholding** — Automatic binary threshold that maximizes between-class variance (no manual tuning needed)
+4. **Dot mapping** — Each 2×4 block maps to Braille dot positions: `[0,3 / 1,4 / 2,5 / 6,7]` → bit offset from U+2800
+5. **Character assembly** — Each character is `rune(0x2800 + dotBits)`
+
+**Options:**
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| Width | int | 80 | Output width in Braille characters (effective px = width×2) |
+| Threshold | float64 | 0 (auto) | Binary threshold (0 = Otsu auto-detect) |
+| Invert | bool | false | Invert dot pattern |
+
+**When to use which mode (A/B comparison):**
+| Criterion | ASCII Mode | Braille Mode |
+|-----------|-----------|--------------|
+| Resolution | Lower (1 pixel per char) | Higher (8 pixels per char) |
+| Style | Classic retro terminal | Modern Unicode art |
+| Best for | Artistic/stylized look | Recognizable meme reproduction |
+| Compatibility | Works everywhere | Needs Unicode Braille font support |
+| Grayscale | Yes (12+ levels) | Binary only (on/off dots) |
+
 ### Handler: `backend/internal/handler/handler.go`
 - `POST /api/convert`: Accepts multipart form with `image` file and optional control fields
-- Decodes JPEG/PNG/GIF, calls converter, returns JSON response
+  - `mode` field: `"ascii"` (default) or `"braille"` — selects conversion algorithm
+  - `threshold` field: float 0–1 for braille binary threshold (0 = Otsu auto)
+- Decodes JPEG/PNG/GIF, routes to appropriate converter, returns JSON response
 - `GET /api/health`: Returns `{"status": "ok"}`
 
 ### Middleware: `backend/internal/middleware/middleware.go`
@@ -81,7 +112,8 @@ The core ASCII art engine — produces high-quality output using adaptive image 
 | AsciiOutput | `src/components/AsciiOutput.tsx` | Displays result, copy button |
 
 ### API Client: `src/api/convert.ts`
-- `convertImage(file, width?, invert?)` → `Promise<{ascii, width, height}>`
+- `convertImage(file, options?)` → `Promise<{ascii, width, height}>`
+- Options: `{ width?, invert?, mode?: 'ascii'|'braille', threshold? }`
 - Uses `FormData` with `fetch` POST to `/api/convert`
 
 ### Vite Config

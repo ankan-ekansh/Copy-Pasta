@@ -308,3 +308,48 @@
     align-items: stretch;
   }
 }
+
+/* Mode toggle */
+.mode-toggle {
+  margin: 0.75rem 0;
+}
+
+.mode-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  color: var(--text-secondary, #666);
+}
+
+.mode-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border: 2px solid var(--border, #ddd);
+  border-radius: 8px;
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mode-btn:hover {
+  border-color: var(--accent, #7c3aed);
+}
+
+.mode-btn.active {
+  background: var(--accent, #7c3aed);
+  border-color: var(--accent, #7c3aed);
+  color: white;
+}
+
+.mode-hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #888);
+  margin-top: 0.3rem;
+}

@@ -4,7 +4,7 @@ import { AsciiOutput } from './components/AsciiOutput';
 import { ImageUploader } from './components/ImageUploader';
 import './App.css';
 
-const DEFAULT_WIDTH = 120;
+const DEFAULT_WIDTH = 150;
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
@@ -80,15 +80,15 @@ function App() {
               <input
                 id="width"
                 type="range"
-                min="40"
-                max="200"
+                min="60"
+                max="250"
                 value={width}
                 onChange={(event) => setWidth(Number(event.target.value))}
               />
               <div className="range-labels">
-                <span>40</span>
-                <span>120</span>
-                <span>200</span>
+                <span>60</span>
+                <span>150</span>
+                <span>250</span>
               </div>
             </label>
 

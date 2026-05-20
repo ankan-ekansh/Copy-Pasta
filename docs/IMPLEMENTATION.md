@@ -29,39 +29,35 @@
 - Reads `PORT` from environment (default: 8080)
 
 ### Converter: `backend/internal/converter/converter.go`
-The core ASCII art engine — produces high-quality output using multiple image processing techniques.
+The core ASCII art engine — produces high-quality output using adaptive image processing.
 
 **Algorithm (pipeline):**
-1. **Resize** — Scale to target width using CatmullRom interpolation, apply 0.45 height factor (compensates for character aspect ratio in monospace fonts)
-2. **Brightness extraction** — Compute per-pixel luminance using gamma-corrected BT.709 weights: `0.2126R + 0.7152G + 0.0722B` (with gamma 2.2 correction for perceptual accuracy)
-3. **Histogram normalization** — Stretch min/max brightness to fill the full 0-1 range, ensuring all character ramp levels are used
-4. **Contrast boost** — Apply midpoint-centered contrast scaling (default 1.3x) to push values away from the middle, creating crisper output
-5. **Edge detection** — Sobel operator computes gradient magnitude, normalized to 0-1
-6. **Edge blending** — Mix brightness and edge maps (default 30% edges) so structural lines remain visible even in flat-brightness regions
-7. **Character mapping** — Map final intensity value to ASCII character ramp
+1. **Resize** — CatmullRom (bicubic) scaling to target width, 0.45 height factor for monospace aspect ratio
+2. **Luminance** — Gamma-corrected BT.709 perceptual brightness (`γ=2.2` decode → weighted sum → `γ=2.2` encode)
+3. **Image analysis** — Compute min/max/mean/stddev to auto-tune processing parameters
+4. **Histogram normalization** — Stretch to full 0–1 range so all character levels are utilized
+5. **Adaptive contrast** — Auto-selects boost factor based on image stddev (low-contrast images get more boost)
+6. **Sobel edge detection** — Compute gradient magnitude, auto-blend based on image characteristics
+7. **Character mapping** — Quantize intensity to density-sorted character ramp with rounding
 
 **Options:**
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | Width | int | 150 | Output width in characters |
 | Invert | bool | false | Reverse light/dark mapping |
-| EdgeMix | float64 | 0.3 | Edge detection blend (0=pure brightness, 1=pure edges) |
-| Contrast | float64 | 1.3 | Contrast boost factor (1.0=no change, higher=more contrast) |
-| CharRamp | string | RampDetailed | Character set for mapping brightness levels |
+| EdgeMix | float64 | auto | Edge blend (0=none, 1=max). Auto-detects based on image stats |
+| Contrast | float64 | auto | Contrast factor (1.0=none). Auto: 1.1–1.8 based on stddev |
+| CharRamp | string | RampDefault | Character set for mapping |
 
 **Available character ramps:**
 | Name | Characters | Levels | Best for |
 |------|-----------|--------|----------|
-| RampDetailed | ` .'^\`",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$` | 70 | High-detail images (default) |
-| RampStandard | ` .:-=+*#%@` | 10 | Simple/retro look |
-| RampBlocks | ` ░▒▓█` | 5 | Block-art style |
-| RampSimple | ` .oO@` | 5 | Minimal, high-contrast |
+| RampDefault | ` .,:;+*?%S#@` | 12 | General purpose — clean, no visual noise |
+| RampClean | ` .:;+*%#@` | 9 | Minimal, very clean output |
+| RampFull | 70-char Bourke ramp | 70 | Large widths (200+), photographic detail |
+| RampBlocks | ` ░▒▓█` | 5 | Terminal block-art style |
 
-**Why these techniques matter:**
-- **Histogram normalization** prevents "washed out" output where most of the image maps to the same few characters (the main issue with the original converter)
-- **Gamma-correct luminance** ensures mid-tones render faithfully instead of appearing too dark
-- **Edge detection** preserves structural detail (outlines, facial features) that pure brightness mapping loses in flat-color regions
-- **70-level character ramp** vs original 10-level eliminates banding artifacts
+**Key design insight:** The default 12-character ramp uses only "isotropic" characters (those that look the same regardless of neighbors). Characters like `|`, `/`, `\`, `(`, `)` create directional visual noise and are excluded from the default. They're available in `RampFull` for specialized use at large widths.
 
 ### Handler: `backend/internal/handler/handler.go`
 - `POST /api/convert`: Accepts multipart form with `image` file and optional control fields
@@ -152,8 +148,8 @@ Convert an image to ASCII art.
 | image | File | Yes | JPEG, PNG, or GIF image |
 | width | int | No | Output width in chars (default: 150) |
 | invert | bool | No | Invert brightness mapping |
-| edgeMix | float | No | Edge detection blend 0-1 (default: 0.3) |
-| contrast | float | No | Contrast boost 0.1-3.0 (default: 1.3) |
+| edgeMix | float | No | Edge detection blend 0-1 (default: auto based on image) |
+| contrast | float | No | Contrast boost 0.1-3.0 (default: auto based on image) |
 | charRamp | string | No | Custom character ramp string |
 
 **Response**: `200 OK`

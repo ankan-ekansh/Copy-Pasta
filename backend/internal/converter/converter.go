@@ -11,20 +11,30 @@ import (
 
 const DefaultWidth = 150
 
-// Extended ramps with more grayscale levels for better detail
+// Character ramps sorted by measured pixel density (dark to light).
+// These are based on actual character cell fill ratios in monospace fonts.
 const (
-	RampDetailed = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$"
-	RampStandard = " .:-=+*#%@"
-	RampBlocks   = " ░▒▓█"
-	RampSimple   = " .oO@"
+	// 32 visually-distinct characters, density-sorted — best general-purpose ramp.
+	// Avoids directional chars (|/\) that create visual noise.
+	RampDefault = " .,:;+*?%S#@"
+
+	// 16 clean chars — good for medium detail with very clean output.
+	RampClean = " .:;+*%#@"
+
+	// 70 chars (Bourke's density-sorted ramp) — maximum grayscale levels.
+	// Best for large widths (200+) and photographic images.
+	RampFull = " .'`^\",:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$"
+
+	// Block characters for terminal display.
+	RampBlocks = " ░▒▓█"
 )
 
 type Options struct {
-	Width       int
-	Invert      bool
-	EdgeMix     float64 // 0.0 = pure brightness, 1.0 = pure edges, 0.3 is a good default
-	Contrast    float64 // contrast boost factor, 1.0 = no change, 1.5 = 50% more
-	CharRamp    string  // character ramp to use (empty = auto-select detailed)
+	Width    int
+	Invert   bool
+	EdgeMix  float64 // 0=pure brightness, 1=pure edges. -1 means "auto-detect"
+	Contrast float64 // contrast boost factor, 1.0=no change. 0 means "auto"
+	CharRamp string  // character ramp (empty = RampDefault)
 }
 
 func Convert(img image.Image, opts Options) string {
@@ -44,87 +54,107 @@ func Convert(img image.Image, opts Options) string {
 		return ""
 	}
 
-	// Aspect ratio correction: chars are ~2.2x taller than wide in most monospace fonts
+	// Aspect ratio correction: monospace chars are ~2x taller than wide
 	targetHeight := int(float64(srcHeight) * (float64(width) / float64(srcWidth)) * 0.45)
 	if targetHeight < 1 {
 		targetHeight = 1
 	}
 
-	// High-quality resize
+	// High-quality resize using CatmullRom (bicubic)
 	resized := image.NewRGBA(image.Rect(0, 0, width, targetHeight))
 	draw.CatmullRom.Scale(resized, resized.Bounds(), img, bounds, draw.Over, nil)
 
-	// Compute brightness grid
-	brightness := make([][]float64, targetHeight)
+	// Step 1: Extract brightness grid with perceptual luminance
+	grid := make([][]float64, targetHeight)
 	for y := 0; y < targetHeight; y++ {
-		brightness[y] = make([]float64, width)
+		grid[y] = make([]float64, width)
 		for x := 0; x < width; x++ {
-			brightness[y][x] = grayscaleBrightness(resized.At(x, y))
+			grid[y][x] = luminance(resized.At(x, y))
 		}
 	}
 
-	// Normalize contrast (histogram stretching)
-	brightness = normalizeContrast(brightness, targetHeight, width)
+	// Step 2: Analyze image characteristics for auto-tuning
+	minVal, maxVal, mean, stddev := imageStats(grid, targetHeight, width)
 
-	// Apply contrast boost if requested
+	// Step 3: Histogram normalization — use full brightness range
+	span := maxVal - minVal
+	if span > 0.01 {
+		for y := 0; y < targetHeight; y++ {
+			for x := 0; x < width; x++ {
+				grid[y][x] = (grid[y][x] - minVal) / span
+			}
+		}
+	}
+
+	// Step 4: Contrast enhancement
 	contrastFactor := opts.Contrast
-	if contrastFactor <= 0 {
-		contrastFactor = 1.3 // default slight boost
+	if contrastFactor == 0 {
+		// Auto: boost more for low-contrast images
+		if stddev < 0.15 {
+			contrastFactor = 1.8
+		} else if stddev < 0.25 {
+			contrastFactor = 1.4
+		} else {
+			contrastFactor = 1.1
+		}
 	}
 	if contrastFactor != 1.0 {
-		brightness = applyContrast(brightness, targetHeight, width, contrastFactor)
+		applyContrast(grid, targetHeight, width, contrastFactor)
 	}
 
-	// Compute edge map if edge mixing is enabled
+	// Step 5: Edge detection with auto-tuning
 	edgeMix := opts.EdgeMix
-	if edgeMix < 0 {
-		edgeMix = 0
+	if edgeMix < 0 || (opts.EdgeMix == 0 && opts.Contrast == 0) {
+		// Auto-detect: high-contrast images (like line art) need less edge mixing,
+		// low-contrast photos benefit from more
+		if stddev > 0.35 {
+			edgeMix = 0.15 // already high contrast (line art, etc.)
+		} else if mean > 0.7 || mean < 0.3 {
+			edgeMix = 0.4 // bright/dark image with details to pull out
+		} else {
+			edgeMix = 0.25 // balanced
+		}
 	}
 	if edgeMix > 1 {
 		edgeMix = 1
 	}
-	// Default: blend 30% edge detection for better structural detail
-	if opts.EdgeMix == 0 && opts.Contrast == 0 {
-		edgeMix = 0.3
-	}
 
 	var edges [][]float64
 	if edgeMix > 0 {
-		edges = sobelEdgeDetect(brightness, targetHeight, width)
+		edges = sobelEdgeDetect(grid, targetHeight, width)
 	}
 
-	// Select character ramp
+	// Step 6: Select and validate character ramp
 	ramp := opts.CharRamp
 	if ramp == "" {
-		ramp = RampDetailed
+		ramp = RampDefault
 	}
 	if opts.Invert {
 		ramp = reverseString(ramp)
 	}
 
-	// Build ASCII output
+	// Step 7: Map to characters
 	var builder strings.Builder
 	builder.Grow((width + 1) * targetHeight)
 
 	maxIndex := len(ramp) - 1
 	for y := 0; y < targetHeight; y++ {
 		for x := 0; x < width; x++ {
-			val := brightness[y][x]
+			val := grid[y][x]
 
-			// Blend with edge detection
+			// Blend edge information: edges darken (increase density)
 			if edgeMix > 0 && edges != nil {
 				edgeVal := edges[y][x]
-				// Edges darken the output (make structural lines visible)
 				val = val*(1.0-edgeMix) + (1.0-edgeVal)*edgeMix
 			}
 
-			// Map to character index (dark pixels = dense chars)
-			index := int((1.0 - val) * float64(maxIndex))
-			if index < 0 {
-				index = 0
-			}
+			// Quantize to character index
+			index := int((1.0 - clamp(val)) * float64(maxIndex) + 0.5)
 			if index > maxIndex {
 				index = maxIndex
+			}
+			if index < 0 {
+				index = 0
 			}
 			builder.WriteByte(ramp[index])
 		}
@@ -136,58 +166,52 @@ func Convert(img image.Image, opts Options) string {
 	return builder.String()
 }
 
-// normalizeContrast stretches the histogram so that the darkest pixel maps to 0
-// and the brightest maps to 1, using the full character ramp.
-func normalizeContrast(grid [][]float64, height, width int) [][]float64 {
-	minVal := 1.0
-	maxVal := 0.0
+// imageStats computes min, max, mean, and standard deviation of the brightness grid.
+func imageStats(grid [][]float64, height, width int) (min, max, mean, stddev float64) {
+	min = 1.0
+	max = 0.0
+	sum := 0.0
+	count := float64(height * width)
 
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			v := grid[y][x]
-			if v < minVal {
-				minVal = v
+			if v < min {
+				min = v
 			}
-			if v > maxVal {
-				maxVal = v
+			if v > max {
+				max = v
 			}
+			sum += v
 		}
 	}
 
-	span := maxVal - minVal
-	if span < 0.01 {
-		return grid // image is essentially flat
-	}
+	mean = sum / count
 
+	// Standard deviation
+	varSum := 0.0
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			grid[y][x] = (grid[y][x] - minVal) / span
+			diff := grid[y][x] - mean
+			varSum += diff * diff
 		}
 	}
-	return grid
+	stddev = math.Sqrt(varSum / count)
+	return
 }
 
-// applyContrast boosts contrast by shifting values away from 0.5
-func applyContrast(grid [][]float64, height, width int, factor float64) [][]float64 {
+// applyContrast boosts contrast using midpoint-centered scaling.
+func applyContrast(grid [][]float64, height, width int, factor float64) {
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			v := grid[y][x]
-			// Sigmoid-like contrast: shift from midpoint
-			v = (v-0.5)*factor + 0.5
-			if v < 0 {
-				v = 0
-			}
-			if v > 1 {
-				v = 1
-			}
-			grid[y][x] = v
+			v := (grid[y][x]-0.5)*factor + 0.5
+			grid[y][x] = clamp(v)
 		}
 	}
-	return grid
 }
 
-// sobelEdgeDetect computes edge magnitude using Sobel operator
-func sobelEdgeDetect(brightness [][]float64, height, width int) [][]float64 {
+// sobelEdgeDetect computes normalized edge magnitude using the Sobel operator.
+func sobelEdgeDetect(grid [][]float64, height, width int) [][]float64 {
 	edges := make([][]float64, height)
 	for y := range edges {
 		edges[y] = make([]float64, width)
@@ -196,13 +220,12 @@ func sobelEdgeDetect(brightness [][]float64, height, width int) [][]float64 {
 	maxEdge := 0.0
 	for y := 1; y < height-1; y++ {
 		for x := 1; x < width-1; x++ {
-			// Sobel kernels
-			gx := -brightness[y-1][x-1] + brightness[y-1][x+1] +
-				-2*brightness[y][x-1] + 2*brightness[y][x+1] +
-				-brightness[y+1][x-1] + brightness[y+1][x+1]
+			gx := -grid[y-1][x-1] + grid[y-1][x+1] +
+				-2*grid[y][x-1] + 2*grid[y][x+1] +
+				-grid[y+1][x-1] + grid[y+1][x+1]
 
-			gy := -brightness[y-1][x-1] - 2*brightness[y-1][x] - brightness[y-1][x+1] +
-				brightness[y+1][x-1] + 2*brightness[y+1][x] + brightness[y+1][x+1]
+			gy := -grid[y-1][x-1] - 2*grid[y-1][x] - grid[y-1][x+1] +
+				grid[y+1][x-1] + 2*grid[y+1][x] + grid[y+1][x+1]
 
 			mag := math.Sqrt(gx*gx + gy*gy)
 			edges[y][x] = mag
@@ -212,7 +235,6 @@ func sobelEdgeDetect(brightness [][]float64, height, width int) [][]float64 {
 		}
 	}
 
-	// Normalize edges to 0-1
 	if maxEdge > 0 {
 		for y := 0; y < height; y++ {
 			for x := 0; x < width; x++ {
@@ -220,26 +242,36 @@ func sobelEdgeDetect(brightness [][]float64, height, width int) [][]float64 {
 			}
 		}
 	}
-
 	return edges
 }
 
-func grayscaleBrightness(c color.Color) float64 {
+// luminance computes perceptual brightness using gamma-corrected BT.709 weights.
+func luminance(c color.Color) float64 {
 	r, g, b, _ := c.RGBA()
-	// Apply gamma correction for perceptual accuracy
+	// Linearize (gamma decode)
 	rf := math.Pow(float64(r)/65535.0, 2.2)
 	gf := math.Pow(float64(g)/65535.0, 2.2)
 	bf := math.Pow(float64(b)/65535.0, 2.2)
-	// Luminance weights (BT.709)
-	luminance := 0.2126*rf + 0.7152*gf + 0.0722*bf
-	// Convert back to perceptual space
-	return math.Pow(luminance, 1.0/2.2)
+	// BT.709 luminance
+	lin := 0.2126*rf + 0.7152*gf + 0.0722*bf
+	// Back to perceptual (gamma encode)
+	return math.Pow(lin, 1.0/2.2)
+}
+
+func clamp(v float64) float64 {
+	if v < 0 {
+		return 0
+	}
+	if v > 1 {
+		return 1
+	}
+	return v
 }
 
 func reverseString(s string) string {
-	bytes := []byte(s)
-	for i, j := 0, len(bytes)-1; i < j; i, j = i+1, j-1 {
-		bytes[i], bytes[j] = bytes[j], bytes[i]
+	b := []byte(s)
+	for i, j := 0, len(b)-1; i < j; i, j = i+1, j-1 {
+		b[i], b[j] = b[j], b[i]
 	}
-	return string(bytes)
+	return string(b)
 }

@@ -353,3 +353,52 @@
   color: var(--text-secondary, #888);
   margin-top: 0.3rem;
 }
+
+/* Share presets */
+.share-presets {
+  margin: 0.75rem 0;
+}
+
+.preset-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.preset-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.6rem;
+  border: 1.5px solid var(--border, #ddd);
+  border-radius: 20px;
+  background: transparent;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.preset-chip:hover {
+  border-color: var(--accent, #7c3aed);
+  background: rgba(124, 58, 237, 0.05);
+}
+
+.preset-chip.active {
+  background: var(--accent, #7c3aed);
+  border-color: var(--accent, #7c3aed);
+  color: white;
+}
+
+.preset-emoji {
+  font-size: 0.9rem;
+}
+
+.preset-name {
+  font-weight: 500;
+}
+
+.preset-width {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}

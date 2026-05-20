@@ -7,6 +7,23 @@ import './App.css';
 const DEFAULT_WIDTH = 150;
 const DEFAULT_BRAILLE_WIDTH = 80;
 
+interface SharePreset {
+  label: string;
+  emoji: string;
+  width: number;
+  mode: ConvertMode;
+}
+
+const SHARE_PRESETS: SharePreset[] = [
+  { label: 'iMessage', emoji: '💭', width: 25, mode: 'braille' },
+  { label: 'WhatsApp', emoji: '💬', width: 35, mode: 'braille' },
+  { label: 'Twitter/X', emoji: '𝕏', width: 40, mode: 'braille' },
+  { label: 'Telegram', emoji: '✈️', width: 45, mode: 'braille' },
+  { label: 'Discord', emoji: '🎮', width: 50, mode: 'braille' },
+  { label: 'Reddit', emoji: '🤖', width: 55, mode: 'braille' },
+  { label: 'Desktop', emoji: '🖥️', width: 80, mode: 'braille' },
+];
+
 function App() {
   const [file, setFile] = useState<File | null>(null);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
@@ -26,7 +43,7 @@ function App() {
       setIsConverting(true);
       setError('');
       const response = await convertImage(file, {
-        width: mode === 'braille' ? Math.min(width, DEFAULT_BRAILLE_WIDTH) : width,
+        width,
         invert,
         mode,
       });
@@ -130,6 +147,30 @@ function App() {
                 {mode === 'braille'
                   ? 'Unicode Braille — higher resolution, great for recognizable memes'
                   : 'Classic ASCII chars — retro terminal aesthetic'}
+              </p>
+            </div>
+
+            <div className="share-presets">
+              <p className="mode-label">📱 Quick share presets</p>
+              <div className="preset-chips">
+                {SHARE_PRESETS.map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    className={`preset-chip ${width === preset.width && mode === preset.mode ? 'active' : ''}`}
+                    onClick={() => {
+                      setWidth(preset.width);
+                      setMode(preset.mode);
+                    }}
+                  >
+                    <span className="preset-emoji">{preset.emoji}</span>
+                    <span className="preset-name">{preset.label}</span>
+                    <span className="preset-width">{preset.width}w</span>
+                  </button>
+                ))}
+              </div>
+              <p className="mode-hint">
+                Tap a preset to auto-set width for that platform. Braille works best on narrow screens.
               </p>
             </div>
 

@@ -25,6 +25,7 @@ type BrailleOptions struct {
 	Width     int     // output width in characters (each char = 2 pixels wide)
 	Threshold float64 // brightness threshold for dot on/off (0-1, 0 = auto via Otsu)
 	Invert    bool    // invert (dark dots on light background vs light dots on dark)
+	Dither    bool    // use Floyd-Steinberg dithering for simulated grayscale
 }
 
 // ConvertBraille converts an image to Unicode Braille art.
@@ -67,10 +68,19 @@ func ConvertBraille(img image.Image, opts BrailleOptions) string {
 		}
 	}
 
-	// Determine threshold
+	// Apply Floyd-Steinberg dithering or simple threshold
+	if opts.Dither {
+		floydSteinbergDither(grid, pixelHeight, pixelWidth, opts.Invert)
+	}
+
+	// Determine threshold (for non-dithered mode, or as reference)
 	threshold := opts.Threshold
 	if threshold <= 0 || threshold >= 1 {
-		threshold = otsuThreshold(grid, pixelHeight, pixelWidth)
+		if opts.Dither {
+			threshold = 0.5 // after dithering, pixels are pushed toward 0 or 1
+		} else {
+			threshold = otsuThreshold(grid, pixelHeight, pixelWidth)
+		}
 	}
 
 	// Build braille output
@@ -87,14 +97,14 @@ func ConvertBraille(img image.Image, opts BrailleOptions) string {
 			// Map 2x4 pixel block to braille dot pattern
 			var brailleOffset rune = 0x2800
 			dots := [8]bool{
-				isDot(grid, py+0, px+0, pixelHeight, pixelWidth, threshold, opts.Invert),
-				isDot(grid, py+1, px+0, pixelHeight, pixelWidth, threshold, opts.Invert),
-				isDot(grid, py+2, px+0, pixelHeight, pixelWidth, threshold, opts.Invert),
-				isDot(grid, py+0, px+1, pixelHeight, pixelWidth, threshold, opts.Invert),
-				isDot(grid, py+1, px+1, pixelHeight, pixelWidth, threshold, opts.Invert),
-				isDot(grid, py+2, px+1, pixelHeight, pixelWidth, threshold, opts.Invert),
-				isDot(grid, py+3, px+0, pixelHeight, pixelWidth, threshold, opts.Invert),
-				isDot(grid, py+3, px+1, pixelHeight, pixelWidth, threshold, opts.Invert),
+				isDot(grid, py+0, px+0, pixelHeight, pixelWidth, threshold, opts.Invert && !opts.Dither),
+				isDot(grid, py+1, px+0, pixelHeight, pixelWidth, threshold, opts.Invert && !opts.Dither),
+				isDot(grid, py+2, px+0, pixelHeight, pixelWidth, threshold, opts.Invert && !opts.Dither),
+				isDot(grid, py+0, px+1, pixelHeight, pixelWidth, threshold, opts.Invert && !opts.Dither),
+				isDot(grid, py+1, px+1, pixelHeight, pixelWidth, threshold, opts.Invert && !opts.Dither),
+				isDot(grid, py+2, px+1, pixelHeight, pixelWidth, threshold, opts.Invert && !opts.Dither),
+				isDot(grid, py+3, px+0, pixelHeight, pixelWidth, threshold, opts.Invert && !opts.Dither),
+				isDot(grid, py+3, px+1, pixelHeight, pixelWidth, threshold, opts.Invert && !opts.Dither),
 			}
 
 			for i, on := range dots {
@@ -114,6 +124,48 @@ func ConvertBraille(img image.Image, opts BrailleOptions) string {
 	}
 
 	return builder.String()
+}
+
+// floydSteinbergDither applies Floyd-Steinberg error diffusion dithering in-place.
+// After dithering, pixels are pushed toward 0.0 or 1.0, simulating grayscale
+// through dot density patterns.
+func floydSteinbergDither(grid [][]float64, height, width int, invert bool) {
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			oldVal := grid[y][x]
+			// Threshold at 0.5 for dithering
+			var newVal float64
+			if invert {
+				if oldVal >= 0.5 {
+					newVal = 1.0
+				} else {
+					newVal = 0.0
+				}
+			} else {
+				if oldVal < 0.5 {
+					newVal = 0.0
+				} else {
+					newVal = 1.0
+				}
+			}
+			grid[y][x] = newVal
+			err := oldVal - newVal
+
+			// Distribute error to neighbors (Floyd-Steinberg kernel)
+			if x+1 < width {
+				grid[y][x+1] += err * 7.0 / 16.0
+			}
+			if y+1 < height {
+				if x-1 >= 0 {
+					grid[y+1][x-1] += err * 3.0 / 16.0
+				}
+				grid[y+1][x] += err * 5.0 / 16.0
+				if x+1 < width {
+					grid[y+1][x+1] += err * 1.0 / 16.0
+				}
+			}
+		}
+	}
 }
 
 // isDot returns true if the pixel at (row, col) should be "on" (a raised dot).

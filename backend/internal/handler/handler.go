@@ -213,6 +213,7 @@ func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {
 			Width:     brailleWidth,
 			Threshold: threshold,
 			Invert:    invert,
+			Dither:    true,
 		})
 	} else {
 		ascii = converter.Convert(img, converter.Options{

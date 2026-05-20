@@ -68,6 +68,62 @@ func ConvertBraille(img image.Image, opts BrailleOptions) string {
 		}
 	}
 
+	// Normalize histogram to full 0-1 range
+	var minVal, maxVal float64 = 1.0, 0.0
+	for y := 0; y < pixelHeight; y++ {
+		for x := 0; x < pixelWidth; x++ {
+			v := grid[y][x]
+			if v < minVal {
+				minVal = v
+			}
+			if v > maxVal {
+				maxVal = v
+			}
+		}
+	}
+	if maxVal > minVal {
+		scale := 1.0 / (maxVal - minVal)
+		for y := 0; y < pixelHeight; y++ {
+			for x := 0; x < pixelWidth; x++ {
+				grid[y][x] = (grid[y][x] - minVal) * scale
+			}
+		}
+	}
+
+	// Edge detection (Sobel) — blend edges into brightness for better outlines
+	edgeStrength := 0.3
+	if width <= 30 {
+		edgeStrength = 0.5 // stronger edges at narrow widths
+	}
+	edges := sobelEdges(grid, pixelHeight, pixelWidth)
+	for y := 0; y < pixelHeight; y++ {
+		for x := 0; x < pixelWidth; x++ {
+			// Darken pixels where edges are strong (edges become dots)
+			grid[y][x] = grid[y][x] * (1.0 - edgeStrength*edges[y][x])
+			if grid[y][x] < 0 {
+				grid[y][x] = 0
+			}
+		}
+	}
+
+	// Contrast boost — stronger at narrow widths to preserve detail
+	contrast := 1.5
+	if width <= 30 {
+		contrast = 2.0
+	}
+	for y := 0; y < pixelHeight; y++ {
+		for x := 0; x < pixelWidth; x++ {
+			v := (grid[y][x]-0.5)*contrast + 0.5
+			if v < 0 {
+				v = 0
+			}
+			if v > 1 {
+				v = 1
+			}
+			grid[y][x] = v
+		}
+	}
+
 	// Apply Floyd-Steinberg dithering or simple threshold
 	if opts.Dither {
 		floydSteinbergDither(grid, pixelHeight, pixelWidth)
@@ -225,4 +281,41 @@ func otsuThreshold(grid [][]float64, height, width int) float64 {
 	}
 
 	return bestThreshold
+}
+
+// sobelEdges computes edge magnitude using Sobel operator, normalized to 0-1.
+func sobelEdges(grid [][]float64, height, width int) [][]float64 {
+	edges := make([][]float64, height)
+	for y := range edges {
+		edges[y] = make([]float64, width)
+	}
+
+	var maxEdge float64
+	for y := 1; y < height-1; y++ {
+		for x := 1; x < width-1; x++ {
+			// Sobel X kernel
+			gx := -grid[y-1][x-1] + grid[y-1][x+1] +
+				-2*grid[y][x-1] + 2*grid[y][x+1] +
+				-grid[y+1][x-1] + grid[y+1][x+1]
+			// Sobel Y kernel
+			gy := -grid[y-1][x-1] - 2*grid[y-1][x] - grid[y-1][x+1] +
+				grid[y+1][x-1] + 2*grid[y+1][x] + grid[y+1][x+1]
+
+			mag := math.Sqrt(gx*gx + gy*gy)
+			edges[y][x] = mag
+			if mag > maxEdge {
+				maxEdge = mag
+			}
+		}
+	}
+
+	// Normalize to 0-1
+	if maxEdge > 0 {
+		for y := range edges {
+			for x := range edges[y] {
+				edges[y][x] /= maxEdge
+			}
+		}
+	}
+	return edges
 }

@@ -70,7 +70,7 @@ func ConvertBraille(img image.Image, opts BrailleOptions) string {
 
 	// Apply Floyd-Steinberg dithering or simple threshold
 	if opts.Dither {
-		floydSteinbergDither(grid, pixelHeight, pixelWidth, opts.Invert)
+		floydSteinbergDither(grid, pixelHeight, pixelWidth)
 	}
 
 	// Determine threshold (for non-dithered mode, or as reference)
@@ -97,14 +97,14 @@ func ConvertBraille(img image.Image, opts BrailleOptions) string {
 			// Map 2x4 pixel block to braille dot pattern
 			var brailleOffset rune = 0x2800
 			dots := [8]bool{
-				isDot(grid, py+0, px+0, pixelHeight, pixelWidth, threshold, opts.Invert && !opts.Dither),
-				isDot(grid, py+1, px+0, pixelHeight, pixelWidth, threshold, opts.Invert && !opts.Dither),
-				isDot(grid, py+2, px+0, pixelHeight, pixelWidth, threshold, opts.Invert && !opts.Dither),
-				isDot(grid, py+0, px+1, pixelHeight, pixelWidth, threshold, opts.Invert && !opts.Dither),
-				isDot(grid, py+1, px+1, pixelHeight, pixelWidth, threshold, opts.Invert && !opts.Dither),
-				isDot(grid, py+2, px+1, pixelHeight, pixelWidth, threshold, opts.Invert && !opts.Dither),
-				isDot(grid, py+3, px+0, pixelHeight, pixelWidth, threshold, opts.Invert && !opts.Dither),
-				isDot(grid, py+3, px+1, pixelHeight, pixelWidth, threshold, opts.Invert && !opts.Dither),
+				isDot(grid, py+0, px+0, pixelHeight, pixelWidth, threshold, opts.Invert),
+				isDot(grid, py+1, px+0, pixelHeight, pixelWidth, threshold, opts.Invert),
+				isDot(grid, py+2, px+0, pixelHeight, pixelWidth, threshold, opts.Invert),
+				isDot(grid, py+0, px+1, pixelHeight, pixelWidth, threshold, opts.Invert),
+				isDot(grid, py+1, px+1, pixelHeight, pixelWidth, threshold, opts.Invert),
+				isDot(grid, py+2, px+1, pixelHeight, pixelWidth, threshold, opts.Invert),
+				isDot(grid, py+3, px+0, pixelHeight, pixelWidth, threshold, opts.Invert),
+				isDot(grid, py+3, px+1, pixelHeight, pixelWidth, threshold, opts.Invert),
 			}
 
 			for i, on := range dots {
@@ -129,24 +129,15 @@ func ConvertBraille(img image.Image, opts BrailleOptions) string {
 // floydSteinbergDither applies Floyd-Steinberg error diffusion dithering in-place.
 // After dithering, pixels are pushed toward 0.0 or 1.0, simulating grayscale
 // through dot density patterns.
-func floydSteinbergDither(grid [][]float64, height, width int, invert bool) {
+func floydSteinbergDither(grid [][]float64, height, width int) {
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			oldVal := grid[y][x]
-			// Threshold at 0.5 for dithering
 			var newVal float64
-			if invert {
-				if oldVal >= 0.5 {
-					newVal = 1.0
-				} else {
-					newVal = 0.0
-				}
+			if oldVal < 0.5 {
+				newVal = 0.0
 			} else {
-				if oldVal < 0.5 {
-					newVal = 0.0
-				} else {
-					newVal = 1.0
-				}
+				newVal = 1.0
 			}
 			grid[y][x] = newVal
 			err := oldVal - newVal

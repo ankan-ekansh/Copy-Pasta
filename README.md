@@ -7,7 +7,8 @@ A fun web app that converts meme images into ASCII art that you can copy-paste a
 ## ✨ Features
 
 - **Image to ASCII**: Upload or paste any image (JPEG, PNG, GIF) and get ASCII art
-- **Configurable output**: Adjust width, invert colors, choose character sets
+- **High-quality conversion**: Sobel edge detection, histogram normalization, gamma-correct luminance, 70-level character ramp
+- **Configurable output**: Adjust width, contrast, edge blending, invert colors
 - **One-click copy**: Copy your ASCII masterpiece to clipboard instantly
 - **Fast**: Server-side Go conversion is blazing fast
 

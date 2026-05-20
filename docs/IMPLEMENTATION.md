@@ -29,24 +29,42 @@
 - Reads `PORT` from environment (default: 8080)
 
 ### Converter: `backend/internal/converter/converter.go`
-The core ASCII art engine.
+The core ASCII art engine — produces high-quality output using multiple image processing techniques.
 
-**Algorithm:**
-1. Resize input image to target width, maintaining aspect ratio
-2. Apply 0.5 height factor (characters are ~2x taller than wide)
-3. Use CatmullRom interpolation for high-quality downscaling
-4. For each pixel, compute luminance: `0.299R + 0.587G + 0.114B`
-5. Map brightness to ASCII ramp: ` .:-=+*#%@`
-6. Build output string with newlines between rows
+**Algorithm (pipeline):**
+1. **Resize** — Scale to target width using CatmullRom interpolation, apply 0.45 height factor (compensates for character aspect ratio in monospace fonts)
+2. **Brightness extraction** — Compute per-pixel luminance using gamma-corrected BT.709 weights: `0.2126R + 0.7152G + 0.0722B` (with gamma 2.2 correction for perceptual accuracy)
+3. **Histogram normalization** — Stretch min/max brightness to fill the full 0-1 range, ensuring all character ramp levels are used
+4. **Contrast boost** — Apply midpoint-centered contrast scaling (default 1.3x) to push values away from the middle, creating crisper output
+5. **Edge detection** — Sobel operator computes gradient magnitude, normalized to 0-1
+6. **Edge blending** — Mix brightness and edge maps (default 30% edges) so structural lines remain visible even in flat-brightness regions
+7. **Character mapping** — Map final intensity value to ASCII character ramp
 
 **Options:**
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| Width | int | 120 | Output width in characters |
+| Width | int | 150 | Output width in characters |
 | Invert | bool | false | Reverse light/dark mapping |
+| EdgeMix | float64 | 0.3 | Edge detection blend (0=pure brightness, 1=pure edges) |
+| Contrast | float64 | 1.3 | Contrast boost factor (1.0=no change, higher=more contrast) |
+| CharRamp | string | RampDetailed | Character set for mapping brightness levels |
+
+**Available character ramps:**
+| Name | Characters | Levels | Best for |
+|------|-----------|--------|----------|
+| RampDetailed | ` .'^\`",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$` | 70 | High-detail images (default) |
+| RampStandard | ` .:-=+*#%@` | 10 | Simple/retro look |
+| RampBlocks | ` ░▒▓█` | 5 | Block-art style |
+| RampSimple | ` .oO@` | 5 | Minimal, high-contrast |
+
+**Why these techniques matter:**
+- **Histogram normalization** prevents "washed out" output where most of the image maps to the same few characters (the main issue with the original converter)
+- **Gamma-correct luminance** ensures mid-tones render faithfully instead of appearing too dark
+- **Edge detection** preserves structural detail (outlines, facial features) that pure brightness mapping loses in flat-color regions
+- **70-level character ramp** vs original 10-level eliminates banding artifacts
 
 ### Handler: `backend/internal/handler/handler.go`
-- `POST /api/convert`: Accepts multipart form with `image` file, optional `width` and `invert` fields
+- `POST /api/convert`: Accepts multipart form with `image` file and optional control fields
 - Decodes JPEG/PNG/GIF, calls converter, returns JSON response
 - `GET /api/health`: Returns `{"status": "ok"}`
 
@@ -132,14 +150,17 @@ Convert an image to ASCII art.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | image | File | Yes | JPEG, PNG, or GIF image |
-| width | int | No | Output width (default: 120) |
+| width | int | No | Output width in chars (default: 150) |
 | invert | bool | No | Invert brightness mapping |
+| edgeMix | float | No | Edge detection blend 0-1 (default: 0.3) |
+| contrast | float | No | Contrast boost 0.1-3.0 (default: 1.3) |
+| charRamp | string | No | Custom character ramp string |
 
 **Response**: `200 OK`
 ```json
 {
   "ascii": "@@@###***...\n...",
-  "width": 120,
+  "width": 150,
   "height": 45
 }
 ```
@@ -171,5 +192,8 @@ Health check endpoint.
 | Router | Chi | Lightweight, idiomatic, great middleware |
 | Frontend | Vite + React + TS | Fast dev experience, type safety |
 | Image resize | CatmullRom | Best quality for downscaling |
-| Height factor | 0.5 | Characters are ~2x taller than wide in monospace |
-| Character ramp | ` .:-=+*#%@` | Good contrast spread, 10 levels |
+| Height factor | 0.45 | Empirically tuned for monospace character aspect ratio |
+| Character ramp | 70-level detailed | Eliminates banding, preserves subtle gradients |
+| Edge detection | Sobel operator | Good balance of speed and edge quality |
+| Contrast | Histogram stretch + 1.3x boost | Ensures full ramp usage regardless of input dynamic range |
+| Luminance | Gamma-corrected BT.709 | Perceptually accurate brightness computation |

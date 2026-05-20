@@ -47,6 +47,9 @@ func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {
 
 	width := converter.DefaultWidth
 	invert := false
+	edgeMix := 0.0  // will use converter default (0.3) when left at 0
+	contrast := 0.0 // will use converter default (1.3) when left at 0
+	charRamp := ""
 	var img image.Image
 	foundImage := false
 
@@ -109,6 +112,45 @@ func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				invert = parsedInvert
+			case "edgeMix":
+				value, readErr := readField(part)
+				if readErr != nil {
+					err = readErr
+					return
+				}
+				if value == "" {
+					return
+				}
+				parsedEdge, parseErr := strconv.ParseFloat(value, 64)
+				if parseErr != nil || parsedEdge < 0 || parsedEdge > 1 {
+					err = errors.New("edgeMix must be a float between 0 and 1")
+					return
+				}
+				edgeMix = parsedEdge
+			case "contrast":
+				value, readErr := readField(part)
+				if readErr != nil {
+					err = readErr
+					return
+				}
+				if value == "" {
+					return
+				}
+				parsedContrast, parseErr := strconv.ParseFloat(value, 64)
+				if parseErr != nil || parsedContrast < 0.1 || parsedContrast > 3.0 {
+					err = errors.New("contrast must be a float between 0.1 and 3.0")
+					return
+				}
+				contrast = parsedContrast
+			case "charRamp":
+				value, readErr := readField(part)
+				if readErr != nil {
+					err = readErr
+					return
+				}
+				if value != "" {
+					charRamp = value
+				}
 			}
 		}()
 
@@ -128,7 +170,13 @@ func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ascii := converter.Convert(img, converter.Options{Width: width, Invert: invert})
+	ascii := converter.Convert(img, converter.Options{
+		Width:    width,
+		Invert:   invert,
+		EdgeMix:  edgeMix,
+		Contrast: contrast,
+		CharRamp: charRamp,
+	})
 	trimmed := strings.TrimRight(ascii, "\n")
 	height := 0
 	if trimmed != "" {

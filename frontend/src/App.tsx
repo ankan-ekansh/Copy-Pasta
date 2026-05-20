@@ -1,0 +1,151 @@
+import { useState } from 'react';
+import { convertImage, type ConvertResponse } from './api/convert';
+import { AsciiOutput } from './components/AsciiOutput';
+import { ImageUploader } from './components/ImageUploader';
+import './App.css';
+
+const DEFAULT_WIDTH = 120;
+
+function App() {
+  const [file, setFile] = useState<File | null>(null);
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const [invert, setInvert] = useState(false);
+  const [result, setResult] = useState<ConvertResponse | null>(null);
+  const [error, setError] = useState('');
+  const [isConverting, setIsConverting] = useState(false);
+
+  const handleConvert = async () => {
+    if (!file) {
+      setError('Pick a meme first so we have something to noodle.');
+      return;
+    }
+
+    try {
+      setIsConverting(true);
+      setError('');
+      const response = await convertImage(file, width, invert);
+      setResult(response);
+    } catch (conversionError) {
+      setResult(null);
+      setError(
+        conversionError instanceof Error
+          ? conversionError.message
+          : 'Conversion failed. Please try another image.',
+      );
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
+  return (
+    <div className="app-shell">
+      <header className="hero-panel">
+        <div>
+          <p className="eyebrow">🍜 Pixel pasta maker</p>
+          <h1>🍝 Copy-Pasta</h1>
+          <p className="hero-subtitle">Turn memes into ASCII art</p>
+          <p className="hero-description">
+            Drop in a cursed image, dial in your character width, and serve it back as gloriously
+            nerdy text art.
+          </p>
+        </div>
+        <div className="hero-badges" aria-label="App features">
+          <span>📋 Paste friendly</span>
+          <span>🎚️ Width controls</span>
+          <span>🌗 Invert mode</span>
+        </div>
+      </header>
+
+      <main className="app-grid">
+        <div className="panel-stack">
+          <ImageUploader
+            onFileSelected={(nextFile) => {
+              setFile(nextFile);
+              setResult(null);
+              setError('');
+            }}
+          />
+
+          <section className="controls-card">
+            <div className="controls-header">
+              <div>
+                <p className="eyebrow">Season to taste</p>
+                <h2>Conversion settings</h2>
+              </div>
+              <span className="width-pill">{width} chars wide</span>
+            </div>
+
+            <label className="range-control" htmlFor="width">
+              <span>Output width</span>
+              <input
+                id="width"
+                type="range"
+                min="40"
+                max="200"
+                value={width}
+                onChange={(event) => setWidth(Number(event.target.value))}
+              />
+              <div className="range-labels">
+                <span>40</span>
+                <span>120</span>
+                <span>200</span>
+              </div>
+            </label>
+
+            <label className="checkbox-row" htmlFor="invert">
+              <input
+                id="invert"
+                type="checkbox"
+                checked={invert}
+                onChange={(event) => setInvert(event.target.checked)}
+              />
+              <span>Invert brightness for dramatic meme energy</span>
+            </label>
+
+            <button
+              type="button"
+              className="primary-button convert-button"
+              onClick={handleConvert}
+              disabled={!file || isConverting}
+            >
+              {isConverting ? 'Cooking ASCII…' : 'Convert to ASCII'}
+            </button>
+
+            <p className="controls-tip">
+              Tip: wider outputs keep more detail, while narrower ones make the joke hit faster.
+            </p>
+
+            {error && <p className="error-banner">⚠️ {error}</p>}
+          </section>
+        </div>
+
+        <div className="output-column">
+          {isConverting && (
+            <section className="status-card" aria-live="polite">
+              <p className="eyebrow">Simmering...</p>
+              <h2>Rendering your fresh pasta</h2>
+              <p>Crunching pixels into tasty monospace noodles.</p>
+            </section>
+          )}
+
+          {result ? (
+            <AsciiOutput ascii={result.ascii} width={result.width} height={result.height} />
+          ) : (
+            !isConverting && (
+              <section className="status-card empty-state">
+                <p className="eyebrow">Ready when you are</p>
+                <h2>No ASCII yet</h2>
+                <p>
+                  Upload a meme, tap convert, and this panel will fill up with beautiful terminal
+                  chaos.
+                </p>
+              </section>
+            )
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default App;

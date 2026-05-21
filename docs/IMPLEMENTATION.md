@@ -34,7 +34,7 @@
 - Creates Chi router with middleware (CORS, logging, recoverer)
 - Registers routes: `POST /api/convert`, `GET /api/health`
 - Reads `PORT` from environment (default: 8080)
-- *Phase 3 additions*: session cookie middleware, SQLite store init, `/api/pastas/*` routes
+- *Phase 3 additions*: session cookie middleware, PostgreSQL store init, `/api/pastas/*` routes
 
 ### Converter: `backend/internal/converter/converter.go`
 The core ASCII art engine — produces high-quality output using adaptive image processing.

@@ -136,7 +136,6 @@ CREATE INDEX idx_pastas_public ON pastas(is_public, created_at);
 - Create `internal/store` package with `Store` interface
 - Run migration on startup (create table if not exists)
 - Wire into server startup via `DATABASE_URL` env var
-- Wire into server startup
 
 #### Step 2: Session cookie middleware
 - Middleware checks for `copy-pasta-session` cookie

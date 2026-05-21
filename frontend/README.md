@@ -9,6 +9,9 @@ npm install
 npm run dev      # Starts Vite dev server on :5173 (proxies /api to :8080)
 ```
 
+> **Note:** The Go backend must be running on `:8080` for API calls to work.
+> Start it with `make dev-backend` (from repo root) or `cd ../backend && go run ./cmd/server`.
+
 ## Build
 
 ```bash

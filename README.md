@@ -25,7 +25,7 @@ A fun web app that converts meme images into ASCII art that you can copy-paste a
 | Backend | Go + Chi router |
 | Frontend | React + TypeScript + Vite |
 | Database | Azure Database for PostgreSQL (Phase 3, planned) |
-| Infra | Docker Compose (dev), Azure Container Apps (prod) |
+| Infra | Azure Container Apps (prod), Docker (local builds) |
 | CI/CD | GitHub Actions (test on PR, deploy on merge to main) |
 | ASCII Engine | Go `image` + `golang.org/x/image` |
 

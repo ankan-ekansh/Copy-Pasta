@@ -104,10 +104,11 @@ A fun web app where users paste/upload meme images and get ASCII art back that t
 
 ### Design Decisions
 - **No auth** — anonymous usage via session cookie (random UUID)
-- **SQLite** — single-file DB, zero ops, ships in the container
+- **PostgreSQL** — Azure Database for PostgreSQL Flexible Server (B1ms tier, free 12 months)
 - **No file storage** — only persist the generated ASCII text, not source images
 - **Shareable links** — each conversion gets a short ID, viewable by anyone
 - **Ownership via cookie** — creator can manage their art while cookie persists
+- **Multi-replica safe** — PostgreSQL supports concurrent connections from 0-3 replicas
 
 ### Data Model
 
@@ -130,9 +131,11 @@ CREATE INDEX idx_pastas_public ON pastas(is_public, created_at);
 ### Implementation Steps (gradual)
 
 #### Step 1: Database layer
-- Add SQLite driver (`modernc.org/sqlite` — pure Go, no CGO)
+- Provision Azure Database for PostgreSQL Flexible Server (B1ms, 32GB)
+- Add `pgx` driver (Go PostgreSQL driver)
 - Create `internal/store` package with `Store` interface
-- Auto-create table on startup (embedded migration)
+- Run migration on startup (create table if not exists)
+- Wire into server startup via `DATABASE_URL` env var
 - Wire into server startup
 
 #### Step 2: Session cookie middleware
@@ -173,19 +176,18 @@ CREATE INDEX idx_pastas_public ON pastas(is_public, created_at);
 
 ### Volume & Retention
 - Each pasta is ~1-50KB of text (braille art at max width)
-- SQLite handles millions of rows easily
+- PostgreSQL 32GB storage handles millions of rows easily
 - Future: add TTL cleanup for old unpublished pastas (e.g., 90 days)
 
-### Infrastructure Prerequisites
-- **Single replica**: Scale Azure Container App to `max-replicas=1` (SQLite doesn't support concurrent writers across instances)
-- **Persistent volume**: Mount an Azure Files volume at `/app/data` so the DB file survives container restarts/replacements
-- Update `infra/setup-azure.sh` to configure storage mount
-- Alternative: swap to Azure Database for PostgreSQL if multi-replica is needed later
-
-### Migration Path to Production DB
-- SQLite works for single-instance deployment (our current setup with replicas capped at 1)
-- If we need multi-instance later, swap to PostgreSQL with same `Store` interface
-- The interface pattern makes this a config change, not a rewrite
+### Infrastructure
+- **Azure Database for PostgreSQL Flexible Server** (Burstable B1ms)
+  - 1 vCore, 2GB RAM, 32GB storage
+  - Free for 12 months with Azure account
+  - ~$13/mo after free period (covered by company credits)
+- Container App keeps 0-3 replicas (no scaling restriction)
+- Connection via `DATABASE_URL` environment variable (set as Container App secret)
+- Update `infra/setup-azure.sh` to provision PostgreSQL server
+- Add `DATABASE_URL` to GitHub Actions secrets for CI/CD
 
 ---
 

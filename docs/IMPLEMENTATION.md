@@ -18,11 +18,11 @@
                       │ • middleware/    │
                       │ • store/         │ ← Phase 3 (planned)
                       └────────┬─────────┘
-                               │
+                               │ DATABASE_URL
                                ▼
                       ┌──────────────────┐
-                      │   SQLite DB      │ ← Phase 3 (planned)
-                      │   (data/app.db)  │ ← requires persistent volume
+                      │   PostgreSQL     │ ← Phase 3 (planned)
+                      │   (Azure Flex)   │
                       └──────────────────┘
 ```
 
@@ -110,11 +110,11 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 
 ### Store: `backend/internal/store/` (Phase 3 — planned)
 - `Store` interface with `SavePasta`, `GetPasta`, `ListBySession`, `Delete`, `UpdatePublic`
-- `SQLiteStore` implementation using `modernc.org/sqlite` (pure Go, no CGO)
-- Auto-creates table on startup (embedded migration SQL)
-- DB file location: `./data/app.db` (configurable via `DB_PATH` env var)
+- `PostgresStore` implementation using `pgx` (Go PostgreSQL driver)
+- Runs migration on startup (CREATE TABLE IF NOT EXISTS)
+- Connection via `DATABASE_URL` env var
 - Uses nanoid for short, URL-safe IDs (10 chars)
-- **Deployment note**: requires single replica + persistent volume mount (Azure Files) to ensure data durability
+- **Deployment**: Azure Database for PostgreSQL Flexible Server (B1ms), supports multiple Container App replicas
 
 ---
 

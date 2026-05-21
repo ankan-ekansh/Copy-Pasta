@@ -82,7 +82,7 @@ Copy-Pasta/
 │   ├── IMPLEMENTATION.md   # Architecture & API reference
 │   └── DEPLOYMENT.md       # Azure deployment guide
 ├── Dockerfile              # Multi-stage: Node build → Go build → Alpine runtime
-├── docker-compose.yml      # Local dev with hot reload
+├── docker-compose.yml      # Multi-container setup (legacy, use `make dev` instead)
 ├── Makefile
 ├── CONTRIBUTING.md         # Branch/PR workflow rules
 └── README.md

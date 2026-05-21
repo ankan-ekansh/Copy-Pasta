@@ -25,8 +25,8 @@ npm run build    # Outputs to dist/ (served by Go backend in production)
 
 ## Tech
 
-- React 18
-- TypeScript (strict)
+- React 19
+- TypeScript
 - Vite (with `/api` proxy to backend in dev)
 - No CSS framework — custom CSS with CSS variables for theming
 

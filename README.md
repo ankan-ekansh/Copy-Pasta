@@ -103,6 +103,7 @@ See **[docs/PLAN.md](docs/PLAN.md)** for detailed task tracking.
 ## 📚 Documentation
 
 - **[Project Plan](docs/PLAN.md)** — Phase-by-phase roadmap with task tracking
+- **[Testing Plan](docs/TESTING.md)** — Testing strategy, test cases, implementation order
 - **[Implementation Guide](docs/IMPLEMENTATION.md)** — Architecture, API reference, design decisions
 - **[Deployment Guide](docs/DEPLOYMENT.md)** — Azure setup, CI/CD, monitoring
 - **[Contributing](CONTRIBUTING.md)** — Branch strategy, PR workflow, commit conventions

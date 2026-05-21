@@ -7,8 +7,11 @@ A fun web app that converts meme images into ASCII art that you can copy-paste a
 ## ✨ Features
 
 - **Image to ASCII**: Upload or paste any image (JPEG, PNG, GIF) and get ASCII art
-- **High-quality conversion**: Sobel edge detection, histogram normalization, gamma-correct luminance, 70-level character ramp
-- **Configurable output**: Adjust width, contrast, edge blending, invert colors
+- **Braille Unicode mode**: High-resolution conversion using Unicode Braille characters (8 pixels per char)
+- **Floyd-Steinberg dithering**: Simulates grayscale through dot density patterns
+- **Edge detection**: Sobel operator preserves outlines at narrow widths
+- **Mobile share presets**: One-tap widths for WhatsApp, Twitter, Telegram, Discord, Reddit
+- **Configurable output**: Width slider, invert, A/B mode toggle (ASCII vs Braille)
 - **One-click copy**: Copy your ASCII masterpiece to clipboard instantly
 - **Fast**: Server-side Go conversion is blazing fast
 
@@ -18,7 +21,8 @@ A fun web app that converts meme images into ASCII art that you can copy-paste a
 |-------|-----------|
 | Backend | Go + Chi router |
 | Frontend | React + TypeScript + Vite |
-| Infra | Docker Compose |
+| Infra | Docker Compose (dev), Azure Container Apps (prod) |
+| CI/CD | GitHub Actions |
 | ASCII Engine | Go `image` + `golang.org/x/image` |
 
 ## 🚀 Quick Start

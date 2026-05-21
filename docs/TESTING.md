@@ -39,10 +39,8 @@ The converter has pure functions with deterministic output — ideal for unit te
 | `TestConvertBraille_Invert` | Invert flag produces different output |
 | `TestOtsuThreshold` | Returns ~0.5 for evenly-split bimodal grid |
 | `TestFloydSteinbergDither` | Output pixels are pushed to 0 or 1 |
-| `TestLuminance_White` | White → ~1.0 |
-| `TestLuminance_Black` | Black → ~0.0 |
-| `TestImageStats` | Correct min/max/mean/stddev for known grid |
-| `TestSobelEdgeDetect` | Detects vertical edge in synthetic image |
+
+> **Note:** Helper tests (`TestLuminance_*`, `TestImageStats`, `TestSobelEdgeDetect`) are listed under Step 3 but can be implemented in the same PR as Step 1.
 
 ### Approach:
 - Create synthetic `image.RGBA` images in tests (solid colors, gradients, half-black/half-white)
@@ -86,6 +84,7 @@ Test the HTTP layer using `net/http/httptest` — no external dependencies neede
 | `reverseString()` | "abc" → "cba", empty → empty |
 | `imageStats()` | Known grid → correct min/max/mean/stddev |
 | `applyContrast()` | Factor 2.0 pushes values away from 0.5 |
+| `sobelEdgeDetect()` | Detects vertical edge in synthetic image |
 
 These are trivially fast and protect against regressions in core math.
 

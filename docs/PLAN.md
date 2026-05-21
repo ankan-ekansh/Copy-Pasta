@@ -17,7 +17,7 @@ A fun web app where users paste/upload meme images and get ASCII art back that t
 | Helper/utility tests (Step 3) | ⬜ |
 | Frontend tests with Vitest (Step 4) | ⬜ |
 
-See **[docs/TESTING.md](TESTING.md)** for the full testing plan.
+See **[TESTING.md](TESTING.md)** for the full testing plan.
 
 ---
 

@@ -137,7 +137,7 @@ CREATE INDEX idx_pastas_public ON pastas(is_public, created_at);
 
 #### Step 2: Session cookie middleware
 - Middleware checks for `copy-pasta-session` cookie
-- If missing, generate UUID and set cookie (HttpOnly, SameSite=Lax, 1 year expiry)
+- If missing, generate UUID and set cookie (HttpOnly, Secure, SameSite=Lax, Path=/, 1 year expiry)
 - Attach session ID to request context
 
 #### Step 3: Save on convert
@@ -146,14 +146,15 @@ CREATE INDEX idx_pastas_public ON pastas(is_public, created_at);
 - No behavior change for users — conversion still works the same
 
 #### Step 4: View shared pasta
-- `GET /api/pastas/:id` — returns pasta by ID (public, no auth needed)
+- `GET /api/pastas/:id` — returns pasta by ID
+- **Visibility model**: all pastas are "unlisted but shareable" — anyone with the link can view regardless of `is_public`. The `is_public` flag only controls whether the pasta appears in the Phase 5 gallery/browse feed.
 - Frontend route `/pasta/:id` — renders the shared art (read-only view)
 - OG meta tags for link previews (stretch)
 
 #### Step 5: My History
 - `GET /api/pastas` — returns pastas for current session (cookie-based)
 - Frontend "My Pastas" page — list of recent conversions
-- Delete button (soft-delete or hard-delete, session-owner only)
+- Hard-delete only (no soft-delete complexity; deleted = gone from DB)
 
 #### Step 6: Publish toggle
 - `PATCH /api/pastas/:id` — toggle `is_public` (session-owner only)
@@ -164,9 +165,9 @@ CREATE INDEX idx_pastas_public ON pastas(is_public, created_at);
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/api/convert` | - | Existing + now returns `id` field |
+| POST | `/api/convert` | - | Existing + now also returns `id` field (Phase 3 addition) |
 | GET | `/api/pastas` | cookie | List my pastas (paginated) |
-| GET | `/api/pastas/:id` | - | View any pasta by ID |
+| GET | `/api/pastas/:id` | - | View any pasta by ID (unlisted-but-shareable) |
 | PATCH | `/api/pastas/:id` | cookie | Update is_public (owner only) |
 | DELETE | `/api/pastas/:id` | cookie | Delete pasta (owner only) |
 
@@ -175,8 +176,14 @@ CREATE INDEX idx_pastas_public ON pastas(is_public, created_at);
 - SQLite handles millions of rows easily
 - Future: add TTL cleanup for old unpublished pastas (e.g., 90 days)
 
+### Infrastructure Prerequisites
+- **Single replica**: Scale Azure Container App to `max-replicas=1` (SQLite doesn't support concurrent writers across instances)
+- **Persistent volume**: Mount an Azure Files volume at `/app/data` so the DB file survives container restarts/replacements
+- Update `infra/setup-azure.sh` to configure storage mount
+- Alternative: swap to Azure Database for PostgreSQL if multi-replica is needed later
+
 ### Migration Path to Production DB
-- SQLite works for single-instance deployment (our current setup)
+- SQLite works for single-instance deployment (our current setup with replicas capped at 1)
 - If we need multi-instance later, swap to PostgreSQL with same `Store` interface
 - The interface pattern makes this a config change, not a rewrite
 

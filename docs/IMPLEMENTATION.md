@@ -16,13 +16,13 @@
                       │ • handler/       │
                       │ • converter/     │
                       │ • middleware/    │
-                      │ • store/         │ ← Phase 3
+                      │ • store/         │ ← Phase 3 (planned)
                       └────────┬─────────┘
                                │
                                ▼
                       ┌──────────────────┐
-                      │   SQLite DB      │ ← Phase 3
-                      │   (data/app.db)  │
+                      │   SQLite DB      │ ← Phase 3 (planned)
+                      │   (data/app.db)  │ ← requires persistent volume
                       └──────────────────┘
 ```
 
@@ -31,10 +31,10 @@
 ## Backend (Go + Chi)
 
 ### Entry Point: `backend/cmd/server/main.go`
-- Creates Chi router with middleware (CORS, logging, recoverer, session)
-- Registers routes: `POST /api/convert`, `GET /api/health`, `/api/pastas/*`
-- Initializes SQLite store on startup
+- Creates Chi router with middleware (CORS, logging, recoverer)
+- Registers routes: `POST /api/convert`, `GET /api/health`
 - Reads `PORT` from environment (default: 8080)
+- *Phase 3 additions*: session cookie middleware, SQLite store init, `/api/pastas/*` routes
 
 ### Converter: `backend/internal/converter/converter.go`
 The core ASCII art engine — produces high-quality output using adaptive image processing.
@@ -108,12 +108,13 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 - CORS configured to allow all origins (dev-friendly, tighten for production)
 - Session cookie middleware (Phase 3): sets `copy-pasta-session` UUID cookie
 
-### Store: `backend/internal/store/` (Phase 3)
+### Store: `backend/internal/store/` (Phase 3 — planned)
 - `Store` interface with `SavePasta`, `GetPasta`, `ListBySession`, `Delete`, `UpdatePublic`
 - `SQLiteStore` implementation using `modernc.org/sqlite` (pure Go, no CGO)
 - Auto-creates table on startup (embedded migration SQL)
 - DB file location: `./data/app.db` (configurable via `DB_PATH` env var)
 - Uses nanoid for short, URL-safe IDs (10 chars)
+- **Deployment note**: requires single replica + persistent volume mount (Azure Files) to ensure data durability
 
 ---
 

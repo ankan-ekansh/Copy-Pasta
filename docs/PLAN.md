@@ -38,6 +38,8 @@ A fun web app where users paste/upload meme images and get ASCII art back that t
 | Floyd-Steinberg dithering | ✅ |
 | Edge detection + contrast boost | ✅ |
 | Mobile share presets (WhatsApp, Twitter, etc.) | ✅ |
+| Auto-detect image type & pick best strategy (photo/sketch/logo) | ⬜ (deferred — build after observability data) |
+| Multiple dithering algorithms (Atkinson, Stucki) | ⬜ |
 
 ---
 

@@ -16,6 +16,13 @@
                       │ • handler/       │
                       │ • converter/     │
                       │ • middleware/    │
+                      │ • store/         │ ← Phase 3
+                      └────────┬─────────┘
+                               │
+                               ▼
+                      ┌──────────────────┐
+                      │   SQLite DB      │ ← Phase 3
+                      │   (data/app.db)  │
                       └──────────────────┘
 ```
 
@@ -24,8 +31,9 @@
 ## Backend (Go + Chi)
 
 ### Entry Point: `backend/cmd/server/main.go`
-- Creates Chi router with middleware (CORS, logging, recoverer)
-- Registers routes: `POST /api/convert`, `GET /api/health`
+- Creates Chi router with middleware (CORS, logging, recoverer, session)
+- Registers routes: `POST /api/convert`, `GET /api/health`, `/api/pastas/*`
+- Initializes SQLite store on startup
 - Reads `PORT` from environment (default: 8080)
 
 ### Converter: `backend/internal/converter/converter.go`
@@ -98,6 +106,14 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 ### Middleware: `backend/internal/middleware/middleware.go`
 - Chi's built-in Logger and Recoverer
 - CORS configured to allow all origins (dev-friendly, tighten for production)
+- Session cookie middleware (Phase 3): sets `copy-pasta-session` UUID cookie
+
+### Store: `backend/internal/store/` (Phase 3)
+- `Store` interface with `SavePasta`, `GetPasta`, `ListBySession`, `Delete`, `UpdatePublic`
+- `SQLiteStore` implementation using `modernc.org/sqlite` (pure Go, no CGO)
+- Auto-creates table on startup (embedded migration SQL)
+- DB file location: `./data/app.db` (configurable via `DB_PATH` env var)
+- Uses nanoid for short, URL-safe IDs (10 chars)
 
 ---
 

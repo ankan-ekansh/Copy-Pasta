@@ -100,16 +100,85 @@ A fun web app where users paste/upload meme images and get ASCII art back that t
 
 ## Phase 3: Persistence — "Remember the Pastas"
 **Status**: Planned  
-**Goal**: Store conversions in a database for revisiting.
+**Goal**: Save conversions so users can revisit, share, and (later) browse others' art.
 
-| Task | Status |
-|------|--------|
-| Add PostgreSQL via Docker Compose | ⬜ |
-| Schema: `conversions` table | ⬜ |
-| Go database layer (pgx) | ⬜ |
-| API: `GET /api/pastas`, `GET /api/pastas/:id` | ⬜ |
-| Frontend: gallery/history page | ⬜ |
-| Shareable URLs (`/pasta/:id`) | ⬜ |
+### Design Decisions
+- **No auth** — anonymous usage via session cookie (random UUID)
+- **SQLite** — single-file DB, zero ops, ships in the container
+- **No file storage** — only persist the generated ASCII text, not source images
+- **Shareable links** — each conversion gets a short ID, viewable by anyone
+- **Ownership via cookie** — creator can manage their art while cookie persists
+
+### Data Model
+
+```sql
+CREATE TABLE pastas (
+  id TEXT PRIMARY KEY,            -- nanoid, 10 chars (e.g. "V1StGXR8_Z")
+  session_id TEXT NOT NULL,       -- links to creator's cookie
+  ascii_art TEXT NOT NULL,        -- the generated output
+  width INT NOT NULL,
+  height INT NOT NULL,
+  mode TEXT NOT NULL,             -- 'ascii' or 'braille'
+  is_public BOOLEAN DEFAULT FALSE, -- opt-in for future gallery (Phase 5)
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_pastas_session ON pastas(session_id);
+CREATE INDEX idx_pastas_public ON pastas(is_public, created_at);
+```
+
+### Implementation Steps (gradual)
+
+#### Step 1: Database layer
+- Add SQLite driver (`modernc.org/sqlite` — pure Go, no CGO)
+- Create `internal/store` package with `Store` interface
+- Auto-create table on startup (embedded migration)
+- Wire into server startup
+
+#### Step 2: Session cookie middleware
+- Middleware checks for `copy-pasta-session` cookie
+- If missing, generate UUID and set cookie (HttpOnly, SameSite=Lax, 1 year expiry)
+- Attach session ID to request context
+
+#### Step 3: Save on convert
+- After successful conversion, auto-save to DB
+- Return `id` in the API response alongside existing fields
+- No behavior change for users — conversion still works the same
+
+#### Step 4: View shared pasta
+- `GET /api/pastas/:id` — returns pasta by ID (public, no auth needed)
+- Frontend route `/pasta/:id` — renders the shared art (read-only view)
+- OG meta tags for link previews (stretch)
+
+#### Step 5: My History
+- `GET /api/pastas` — returns pastas for current session (cookie-based)
+- Frontend "My Pastas" page — list of recent conversions
+- Delete button (soft-delete or hard-delete, session-owner only)
+
+#### Step 6: Publish toggle
+- `PATCH /api/pastas/:id` — toggle `is_public` (session-owner only)
+- "Publish to gallery" button in UI
+- Prepares data for Phase 5 gallery
+
+### API Changes
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/convert` | - | Existing + now returns `id` field |
+| GET | `/api/pastas` | cookie | List my pastas (paginated) |
+| GET | `/api/pastas/:id` | - | View any pasta by ID |
+| PATCH | `/api/pastas/:id` | cookie | Update is_public (owner only) |
+| DELETE | `/api/pastas/:id` | cookie | Delete pasta (owner only) |
+
+### Volume & Retention
+- Each pasta is ~1-50KB of text (braille art at max width)
+- SQLite handles millions of rows easily
+- Future: add TTL cleanup for old unpublished pastas (e.g., 90 days)
+
+### Migration Path to Production DB
+- SQLite works for single-instance deployment (our current setup)
+- If we need multi-instance later, swap to PostgreSQL with same `Store` interface
+- The interface pattern makes this a config change, not a rewrite
 
 ---
 

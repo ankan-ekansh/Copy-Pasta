@@ -16,6 +16,13 @@
                       │ • handler/       │
                       │ • converter/     │
                       │ • middleware/    │
+                      │ • store/         │ ← Phase 3 (planned)
+                      └────────┬─────────┘
+                               │ DATABASE_URL
+                               ▼
+                      ┌──────────────────┐
+                      │   PostgreSQL     │ ← Phase 3 (planned)
+                      │   (Azure Flex)   │
                       └──────────────────┘
 ```
 
@@ -27,6 +34,7 @@
 - Creates Chi router with middleware (CORS, logging, recoverer)
 - Registers routes: `POST /api/convert`, `GET /api/health`
 - Reads `PORT` from environment (default: 8080)
+- *Phase 3 additions*: session cookie middleware, PostgreSQL store init, `/api/pastas/*` routes
 
 ### Converter: `backend/internal/converter/converter.go`
 The core ASCII art engine — produces high-quality output using adaptive image processing.
@@ -98,6 +106,15 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 ### Middleware: `backend/internal/middleware/middleware.go`
 - Chi's built-in Logger and Recoverer
 - CORS configured to allow all origins (dev-friendly, tighten for production)
+- Session cookie middleware (Phase 3): sets `copy-pasta-session` UUID cookie
+
+### Store: `backend/internal/store/` (Phase 3 — planned)
+- `Store` interface with `SavePasta`, `GetPasta`, `ListBySession`, `Delete`, `UpdatePublic`
+- `PostgresStore` implementation using `pgx` (Go PostgreSQL driver)
+- Runs migration on startup (CREATE TABLE IF NOT EXISTS)
+- Connection via `DATABASE_URL` env var
+- Uses nanoid for short, URL-safe IDs (10 chars)
+- **Deployment**: Azure Database for PostgreSQL Flexible Server (B1ms), supports multiple Container App replicas
 
 ---
 

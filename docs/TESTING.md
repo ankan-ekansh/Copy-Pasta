@@ -66,7 +66,7 @@ Test the HTTP layer using `net/http/httptest` — no external dependencies neede
 | `TestConvert_InvalidImage` | 400 + error "invalid or unsupported image" (send random bytes) |
 | `TestConvert_InvalidWidth` | 400 + error for width=-1, width=abc |
 | `TestConvert_BrailleMode` | 200 + braille characters in response |
-| `TestConvert_OversizeBody` | 413 or error when body > 20MB |
+| `TestConvert_OversizeBody` | Body > 20MB triggers `MaxBytesReader`; expect 400 "invalid multipart payload" (current behavior — upgrade to 413 as a future improvement) |
 | `TestConvert_InvalidInvert` | 400 + error for invert=banana |
 | `TestHealth` | 200 + `{"status":"ok"}` |
 
@@ -97,8 +97,8 @@ These are trivially fast and protect against regressions in core math.
 
 | Test | What it verifies |
 |------|-----------------|
-| `ThemeToggle` | Clicking toggles `data-theme` attribute |
-| `ThemeToggle` | Reads from localStorage on mount |
+| `ThemeToggle_Toggle` | Clicking toggles `data-theme` attribute |
+| `ThemeToggle_InitFromStorage` | Reads from localStorage on mount |
 | `ImageUploader` | Renders file input and accepts images |
 | `AsciiOutput` | Renders pre-formatted text, copy button works |
 | `convert API` | Calls fetch with correct multipart body |
@@ -144,4 +144,8 @@ For Step 4, add to `.github/workflows/deploy.yml`:
 
 Start with **no coverage threshold** — the goal is to have meaningful tests, not chase a number. Once we have 20+ tests, consider adding a coverage gate (~60% for converter package).
 
-Run locally: `go test -cover ./internal/converter/`
+Run locally (from `backend/` directory):
+```bash
+cd backend
+go test -cover ./internal/converter/
+```

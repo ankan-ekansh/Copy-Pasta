@@ -31,7 +31,7 @@ A fun web app where users paste/upload meme images and get ASCII art back that t
 | Drag-and-drop upload | ✅ |
 | ASCII preview with proper monospace sizing | ✅ |
 | Controls: width slider, character set, invert | ✅ |
-| Dark/light theme toggle | ⬜ |
+| Dark/light theme toggle | ✅ |
 | Loading states & error handling polish | ✅ |
 | Responsive design for mobile | ⬜ |
 | Braille Unicode mode (A/B toggle) | ✅ |

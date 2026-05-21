@@ -22,18 +22,75 @@ A fun web app where users paste/upload meme images and get ASCII art back that t
 ---
 
 ## Phase 2: Polish — "Make It Delightful"
-**Status**: Upcoming  
+**Status**: In Progress  
 **Goal**: Improve UX, add styling, and make the output look good.
 
 | Task | Status |
 |------|--------|
 | Clipboard paste support (Ctrl+V) | ⬜ |
 | Drag-and-drop upload | ⬜ |
-| ASCII preview with proper monospace sizing | ⬜ |
-| Controls: width slider, character set, invert | ⬜ |
+| ASCII preview with proper monospace sizing | ✅ |
+| Controls: width slider, character set, invert | ✅ |
 | Dark/light theme toggle | ⬜ |
-| Loading states & error handling polish | ⬜ |
+| Loading states & error handling polish | ✅ |
 | Responsive design for mobile | ⬜ |
+| Braille Unicode mode (A/B toggle) | ✅ |
+| Floyd-Steinberg dithering | ✅ |
+| Edge detection + contrast boost | ✅ |
+| Mobile share presets (WhatsApp, Twitter, etc.) | ✅ |
+
+---
+
+## Phase 2.5: Deploy MVP — "Ship It Early" 🚀
+**Status**: Planned  
+**Goal**: Get the app live on Azure so people can use it. Minimal viable deployment.
+
+### Architecture (Azure)
+```
+┌─────────────┐       ┌────────────────────────┐
+│   Browser   │──────▶│  Azure Container App    │
+│   (Users)   │◀──────│  (single container)     │
+└─────────────┘       │  Go serves API + static │
+                      └────────────────────────┘
+```
+
+**Strategy**: Single-container deployment — Go backend serves both the API and the pre-built React static files. No separate frontend service needed.
+
+### Tasks
+
+| Task | Status |
+|------|--------|
+| Go serves static frontend files (embed or serve dir) | ⬜ |
+| Multi-stage Dockerfile (build Go + React in one image) | ⬜ |
+| Azure Container Registry (ACR) setup | ⬜ |
+| Azure Container App deployment | ⬜ |
+| Custom domain + HTTPS (optional, Azure auto-TLS) | ⬜ |
+| GitHub Actions CI/CD (build → push → deploy) | ⬜ |
+| Environment config (PORT, CORS origin) | ⬜ |
+| Health check probe configured | ⬜ |
+
+### Azure Resources Needed
+| Resource | SKU/Tier | Est. Cost |
+|----------|----------|-----------|
+| Container Registry | Basic | ~$5/mo |
+| Container Apps Environment | Consumption | Pay-per-use (near-free at low traffic) |
+| Custom domain (optional) | - | Free with Azure-managed cert |
+
+### Deployment Steps (manual first, then automate)
+1. Create resource group: `rg-copy-pasta`
+2. Create ACR: `copypasta.azurecr.io`
+3. Build & push unified Docker image
+4. Create Container Apps Environment + App
+5. Configure ingress (port 8080, external)
+6. Verify health check works
+7. Set up GitHub Actions for CI/CD
+
+### Why Azure Container Apps?
+- Scales to zero (no cost when idle)
+- Built-in HTTPS/TLS
+- Simple container deployment (no K8s complexity)
+- Auto-scaling on traffic
+- Perfect for a fun side project with company credits
 
 ---
 
@@ -80,19 +137,19 @@ A fun web app where users paste/upload meme images and get ASCII art back that t
 
 ---
 
-## Phase 6: Production Hardening — "Ship It"
+## Phase 6: Production Hardening — "Bulletproof It"
 **Status**: Planned  
-**Goal**: Make it deployable to a real environment.
+**Goal**: Harden for real traffic and add operational maturity.
 
 | Task | Status |
 |------|--------|
-| Multi-stage Docker build (optimized) | ⬜ |
-| CI/CD pipeline (GitHub Actions) | ⬜ |
-| Environment-based configuration | ⬜ |
-| CORS, security headers, input validation | ⬜ |
+| Rate limiting middleware | ⬜ |
+| Image size/format validation hardening | ⬜ |
 | Graceful shutdown | ⬜ |
 | Database migrations (golang-migrate) | ⬜ |
-| Cloud deployment (Fly.io / Railway / GCP) | ⬜ |
+| Auto-scaling rules (Azure Container Apps) | ⬜ |
+| CDN for static assets (Azure Front Door) | ⬜ |
+| Error alerting (Azure Monitor / PagerDuty) | ⬜ |
 
 ---
 
@@ -100,5 +157,7 @@ A fun web app where users paste/upload meme images and get ASCII art back that t
 - Animated GIF → animated ASCII
 - Webcam → live ASCII stream
 - Color ASCII (ANSI escape codes)
-- Braille character mode for higher resolution
-- Custom character ramp editor
+- ~~Braille character mode for higher resolution~~ ✅ Done
+- ~~Custom character ramp editor~~ (partially done — ramp selection exists)
+- Copy as image (render ASCII to PNG for platforms that mangle Unicode)
+- OpenGraph preview images for shared links

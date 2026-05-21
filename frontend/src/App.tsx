@@ -5,7 +5,6 @@ import { ImageUploader } from './components/ImageUploader';
 import './App.css';
 
 const DEFAULT_WIDTH = 150;
-const DEFAULT_BRAILLE_WIDTH = 80;
 
 interface SharePreset {
   label: string;

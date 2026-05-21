@@ -31,20 +31,28 @@ echo "ACR:            $ACR_NAME.azurecr.io"
 echo ""
 
 # --- Step 1: Resource Group ---
-echo "📦 Creating resource group..."
-az group create \
-  --name "$RESOURCE_GROUP" \
-  --location "$LOCATION" \
-  --output none
+if az group show --name "$RESOURCE_GROUP" &>/dev/null; then
+  echo "📦 Resource group '$RESOURCE_GROUP' already exists — skipping."
+else
+  echo "📦 Creating resource group..."
+  az group create \
+    --name "$RESOURCE_GROUP" \
+    --location "$LOCATION" \
+    --output none
+fi
 
 # --- Step 2: Azure Container Registry ---
-echo "🐳 Creating container registry..."
-az acr create \
-  --resource-group "$RESOURCE_GROUP" \
-  --name "$ACR_NAME" \
-  --sku Basic \
-  --admin-enabled true \
-  --output none
+if az acr show --name "$ACR_NAME" &>/dev/null; then
+  echo "🐳 Container registry '$ACR_NAME' already exists — skipping."
+else
+  echo "🐳 Creating container registry..."
+  az acr create \
+    --resource-group "$RESOURCE_GROUP" \
+    --name "$ACR_NAME" \
+    --sku Basic \
+    --admin-enabled true \
+    --output none
+fi
 
 # Get ACR credentials for later use
 ACR_LOGIN_SERVER=$(az acr show --name "$ACR_NAME" --query loginServer -o tsv)
@@ -54,30 +62,38 @@ ACR_PASSWORD=$(az acr credential show --name "$ACR_NAME" --query "passwords[0].v
 echo "   Registry: $ACR_LOGIN_SERVER"
 
 # --- Step 3: Container Apps Environment ---
-echo "🌐 Creating Container Apps environment..."
-az containerapp env create \
-  --name "$CONTAINER_APP_ENV" \
-  --resource-group "$RESOURCE_GROUP" \
-  --location "$LOCATION" \
-  --output none
+if az containerapp env show --name "$CONTAINER_APP_ENV" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+  echo "🌐 Container Apps environment '$CONTAINER_APP_ENV' already exists — skipping."
+else
+  echo "🌐 Creating Container Apps environment..."
+  az containerapp env create \
+    --name "$CONTAINER_APP_ENV" \
+    --resource-group "$RESOURCE_GROUP" \
+    --location "$LOCATION" \
+    --output none
+fi
 
 # --- Step 4: Container App (initial deployment with placeholder) ---
-echo "🚀 Creating Container App..."
-az containerapp create \
-  --name "$CONTAINER_APP_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --environment "$CONTAINER_APP_ENV" \
-  --image "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest" \
-  --target-port 8080 \
-  --ingress external \
-  --min-replicas 0 \
-  --max-replicas 3 \
-  --cpu 0.25 \
-  --memory 0.5Gi \
-  --registry-server "$ACR_LOGIN_SERVER" \
-  --registry-username "$ACR_USERNAME" \
-  --registry-password "$ACR_PASSWORD" \
-  --output none
+if az containerapp show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+  echo "🚀 Container App '$CONTAINER_APP_NAME' already exists — skipping."
+else
+  echo "🚀 Creating Container App..."
+  az containerapp create \
+    --name "$CONTAINER_APP_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --environment "$CONTAINER_APP_ENV" \
+    --image "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest" \
+    --target-port 8080 \
+    --ingress external \
+    --min-replicas 0 \
+    --max-replicas 3 \
+    --cpu 0.25 \
+    --memory 0.5Gi \
+    --registry-server "$ACR_LOGIN_SERVER" \
+    --registry-username "$ACR_USERNAME" \
+    --registry-password "$ACR_PASSWORD" \
+    --output none
+fi
 
 # Get the app URL
 APP_URL=$(az containerapp show \

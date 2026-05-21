@@ -41,9 +41,11 @@ A fun web app where users paste/upload meme images and get ASCII art back that t
 
 ---
 
-## Phase 2.5: Deploy MVP — "Ship It Early" 🚀
-**Status**: Planned  
+## Phase 2.5: Deploy MVP — "Ship It Early" ✅
+**Status**: Complete  
 **Goal**: Get the app live on Azure so people can use it. Minimal viable deployment.
+
+**Live URL**: https://copy-pasta.happyflower-831a5c58.eastus.azurecontainerapps.io
 
 ### Architecture (Azure)
 ```
@@ -60,14 +62,14 @@ A fun web app where users paste/upload meme images and get ASCII art back that t
 
 | Task | Status |
 |------|--------|
-| Go serves static frontend files (embed or serve dir) | ⬜ |
-| Multi-stage Dockerfile (build Go + React in one image) | ⬜ |
-| Azure Container Registry (ACR) setup | ⬜ |
-| Azure Container App deployment | ⬜ |
+| Go serves static frontend files (embed or serve dir) | ✅ |
+| Multi-stage Dockerfile (build Go + React in one image) | ✅ |
+| Azure Container Registry (ACR) setup | ✅ |
+| Azure Container App deployment | ✅ |
 | Custom domain + HTTPS (optional, Azure auto-TLS) | ⬜ |
-| GitHub Actions CI/CD (build → push → deploy) | ⬜ |
-| Environment config (PORT, CORS origin) | ⬜ |
-| Health check probe configured | ⬜ |
+| GitHub Actions CI/CD (build → push → deploy) | ✅ |
+| Environment config (PORT, CORS origin) | ✅ |
+| Health check probe configured | ✅ |
 
 ### Azure Resources Needed
 | Resource | SKU/Tier | Est. Cost |

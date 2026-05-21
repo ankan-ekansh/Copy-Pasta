@@ -25,13 +25,15 @@ This creates:
 - Container Registry: `copypastacr.azurecr.io`
 - Container Apps Environment + App
 
-### 2. Set Up GitHub Actions Secrets
+### 2. Set Up GitHub Actions Secret
 
-In your GitHub repo → Settings → Secrets → Actions, add:
+In your GitHub repo → **Settings → Secrets and variables → Actions → New repository secret**:
 
 | Secret | How to get it |
 |--------|---------------|
-| `AZURE_CREDENTIALS` | `az ad sp create-for-rbac --name "copy-pasta-cicd" --role contributor --scopes /subscriptions/{sub-id}/resourceGroups/rg-copy-pasta --json-auth` |
+| `AZURE_CREDENTIALS` | Entire JSON output from: `az ad sp create-for-rbac --name "copy-pasta-github" --role contributor --scopes /subscriptions/{sub-id}/resourceGroups/rg-copy-pasta --sdk-auth` |
+
+> ⚠️ Use a **repository secret** (not environment secret). Paste the full JSON blob as the value.
 
 ### 3. Push to Main
 

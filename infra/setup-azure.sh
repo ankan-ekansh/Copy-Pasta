@@ -30,6 +30,19 @@ echo "Location:       $LOCATION"
 echo "ACR:            $ACR_NAME.azurecr.io"
 echo ""
 
+# --- Step 0: Register required resource providers ---
+PROVIDERS=("Microsoft.App" "Microsoft.OperationalInsights" "Microsoft.ContainerRegistry")
+for provider in "${PROVIDERS[@]}"; do
+  state=$(az provider show --namespace "$provider" --query "registrationState" -o tsv 2>/dev/null || echo "NotRegistered")
+  if [ "$state" != "Registered" ]; then
+    echo "🔧 Registering resource provider $provider..."
+    az provider register -n "$provider" --wait
+  else
+    echo "✓ Provider $provider already registered."
+  fi
+done
+echo ""
+
 # --- Step 1: Resource Group ---
 if az group show --name "$RESOURCE_GROUP" &>/dev/null; then
   echo "📦 Resource group '$RESOURCE_GROUP' already exists — skipping."

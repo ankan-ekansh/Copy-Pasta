@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { convertImage, type ConvertResponse, type ConvertMode } from './api/convert';
 import { AsciiOutput } from './components/AsciiOutput';
 import { ImageUploader } from './components/ImageUploader';
+import { ThemeToggle } from './components/ThemeToggle';
 import './App.css';
 
 const DEFAULT_WIDTH = 150;
@@ -62,6 +63,7 @@ function App() {
   return (
     <div className="app-shell">
       <header className="hero-panel">
+        <ThemeToggle />
         <div>
           <p className="eyebrow">🍜 Pixel pasta maker</p>
           <h1>🍝 Copy-Pasta</h1>

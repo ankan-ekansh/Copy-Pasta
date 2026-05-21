@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 
 type Theme = 'dark' | 'light';
 
@@ -11,7 +11,7 @@ function getInitialTheme(): Theme {
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('copy-pasta-theme', theme);
   }, [theme]);

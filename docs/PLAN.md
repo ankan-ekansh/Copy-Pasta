@@ -27,8 +27,8 @@ A fun web app where users paste/upload meme images and get ASCII art back that t
 
 | Task | Status |
 |------|--------|
-| Clipboard paste support (Ctrl+V) | ⬜ |
-| Drag-and-drop upload | ⬜ |
+| Clipboard paste support (Ctrl+V) | ✅ |
+| Drag-and-drop upload | ✅ |
 | ASCII preview with proper monospace sizing | ✅ |
 | Controls: width slider, character set, invert | ✅ |
 | Dark/light theme toggle | ⬜ |

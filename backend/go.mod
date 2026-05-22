@@ -1,4 +1,4 @@
-module github.com/ankan/copy-pasta
+module github.com/ankan-ekansh/Copy-Pasta/backend
 
 go 1.22
 

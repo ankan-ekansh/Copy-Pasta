@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ankan/copy-pasta/internal/converter"
+	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/converter"
 
 	_ "image/gif"
 	_ "image/jpeg"

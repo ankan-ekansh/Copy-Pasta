@@ -17,6 +17,7 @@ function reducer(state: State, action: Action): State {
     case 'loaded': return { pastas: action.pastas, loading: false, error: '' };
     case 'error': return { ...state, loading: false, error: action.message };
     case 'remove': return { ...state, pastas: state.pastas.filter((p) => p.id !== action.id) };
+    default: return state;
   }
 }
 
@@ -94,14 +95,14 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
                 type="button"
                 className="history-btn"
                 onClick={() => handleCopyLink(pasta.id)}
-                title="Copy share link"
+                aria-label="Copy share link"
               >
                 🔗
               </button>
               <Link
                 to={`/pasta/${pasta.id}`}
                 className="history-btn"
-                title="View"
+                aria-label="View pasta"
               >
                 👁️
               </Link>
@@ -109,7 +110,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
                 type="button"
                 className="history-btn history-btn-danger"
                 onClick={() => handleDelete(pasta.id)}
-                title="Delete"
+                aria-label="Delete pasta"
               >
                 🗑️
               </button>

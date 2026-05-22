@@ -1,13 +1,26 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useReducer, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getPasta, type Pasta } from '../api/pastas';
 import { ThemeToggle } from './ThemeToggle';
 
+type FetchState = { pasta: Pasta | null; loading: boolean; error: string };
+type FetchAction =
+  | { type: 'fetch' }
+  | { type: 'success'; pasta: Pasta }
+  | { type: 'failure'; message: string };
+
+function fetchReducer(state: FetchState, action: FetchAction): FetchState {
+  switch (action.type) {
+    case 'fetch': return { pasta: null, loading: true, error: '' };
+    case 'success': return { pasta: action.pasta, loading: false, error: '' };
+    case 'failure': return { pasta: null, loading: false, error: action.message };
+    default: return state;
+  }
+}
+
 export function PastaView() {
   const { id } = useParams<{ id: string }>();
-  const [pasta, setPasta] = useState<Pasta | null>(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [state, dispatch] = useReducer(fetchReducer, { pasta: null, loading: true, error: '' });
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -17,16 +30,19 @@ export function PastaView() {
 
   useEffect(() => {
     if (!id) return;
+    const controller = new AbortController();
+    dispatch({ type: 'fetch' });
     getPasta(id)
-      .then(setPasta)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .then((p) => { if (!controller.signal.aborted) dispatch({ type: 'success', pasta: p }); })
+      .catch((err) => { if (!controller.signal.aborted) dispatch({ type: 'failure', message: err.message }); });
+    return () => controller.abort();
   }, [id]);
 
   const handleCopy = async () => {
-    if (!pasta) return;
+    if (!state.pasta) return;
     try {
-      await navigator.clipboard.writeText(pasta.ascii_art);
+      await navigator.clipboard.writeText(state.pasta.ascii_art);
+      if (timerRef.current) clearTimeout(timerRef.current);
       setCopied(true);
       timerRef.current = setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -34,7 +50,7 @@ export function PastaView() {
     }
   };
 
-  if (loading) {
+  if (state.loading) {
     return (
       <div className="app-shell">
         <header className="hero-panel">
@@ -45,7 +61,7 @@ export function PastaView() {
     );
   }
 
-  if (error || !pasta) {
+  if (state.error || !state.pasta) {
     return (
       <div className="app-shell">
         <header className="hero-panel">
@@ -55,7 +71,7 @@ export function PastaView() {
         </header>
         <main className="app-grid">
           <section className="status-card empty-state">
-            <h2>😵 {error || 'This pasta does not exist'}</h2>
+            <h2>😵 {state.error || 'This pasta does not exist'}</h2>
             <p>It may have been deleted or the link is incorrect.</p>
             <Link to="/" className="primary-button" style={{ display: 'inline-block', marginTop: '1rem', textDecoration: 'none' }}>
               ← Make your own pasta
@@ -65,6 +81,8 @@ export function PastaView() {
       </div>
     );
   }
+
+  const { pasta } = state;
 
   return (
     <div className="app-shell">

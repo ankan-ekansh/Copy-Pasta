@@ -214,6 +214,7 @@ function App() {
                     <input
                       type="text"
                       readOnly
+                      aria-label="Shareable pasta link"
                       value={`${window.location.origin}/pasta/${result.id}`}
                       className="share-link-input"
                     />

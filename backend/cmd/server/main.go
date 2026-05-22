@@ -35,6 +35,10 @@ func main() {
 	h := handler.New(handler.WithStore(s))
 	r.Get("/api/health", h.Health)
 	r.Post("/api/convert", h.Convert)
+	r.Get("/api/pastas", h.ListPastas)
+	r.Get("/api/pastas/{id}", h.GetPasta)
+	r.Delete("/api/pastas/{id}", h.DeletePasta)
+	r.Patch("/api/pastas/{id}", h.SetPublic)
 
 	// Serve static frontend files if the directory exists (production mode)
 	staticDir := os.Getenv("STATIC_DIR")

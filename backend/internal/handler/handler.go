@@ -5,11 +5,13 @@ import (
 	"errors"
 	"image"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/converter"
+	appmiddleware "github.com/ankan-ekansh/Copy-Pasta/backend/internal/middleware"
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/store"
 
 	_ "image/gif"
@@ -247,7 +249,28 @@ func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {
 		height = strings.Count(trimmed, "\n") + 1
 	}
 
+	// Persist to database if store is configured
+	var pastaID string
+	if h.store != nil {
+		sessionID := appmiddleware.GetSessionID(r.Context())
+		pasta := &store.Pasta{
+			ID:        store.GenerateID(),
+			SessionID: sessionID,
+			ASCIIArt:  ascii,
+			Width:     width,
+			Height:    height,
+			Mode:      mode,
+		}
+		if err := h.store.Save(r.Context(), pasta); err != nil {
+			// Log but don't fail the request — persistence is best-effort
+			log.Printf("failed to save pasta: %v", err)
+		} else {
+			pastaID = pasta.ID
+		}
+	}
+
 	writeJSON(w, http.StatusOK, convertResponse{
+		ID:     pastaID,
 		ASCII:  ascii,
 		Width:  width,
 		Height: height,
@@ -274,4 +297,8 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 
 func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, errorResponse{Error: message})
+}
+
+func decodeJSON(r *http.Request, v any) error {
+	return json.NewDecoder(io.LimitReader(r.Body, 1024)).Decode(v)
 }

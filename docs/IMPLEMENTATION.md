@@ -152,7 +152,7 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 
 ### API Client: `src/api/pastas.ts`
 - `getPasta(id)` → `Promise<Pasta>` — fetch a single pasta by ID
-- `listPastas()` → `Promise<Pasta[]>` — list user's pastas (returns `[]` on 503)
+- `listPastas(limit?, offset?)` → `Promise<Pasta[]>` — list user's pastas (returns `[]` on 503)
 - `deletePasta(id)` → `Promise<void>` — delete a pasta by ID
 - All use `credentials: 'include'` and `encodeURIComponent(id)` in paths
 
@@ -236,6 +236,8 @@ Convert an image to ASCII art.
   "id": "aBcDeFgHiJ"
 }
 ```
+
+> **Note**: `id` is only present when persistence is enabled (`DATABASE_URL` configured). It is omitted otherwise.
 
 **Errors**: `400 Bad Request`
 ```json

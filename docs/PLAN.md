@@ -136,7 +136,7 @@ CREATE TABLE pastas (
   width INT NOT NULL,
   height INT NOT NULL,
   mode TEXT NOT NULL,             -- 'ascii' or 'braille'
-  is_public BOOLEAN DEFAULT FALSE, -- opt-in for future gallery (Phase 5)
+  is_public BOOLEAN NOT NULL DEFAULT FALSE, -- opt-in for future gallery (Phase 5)
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

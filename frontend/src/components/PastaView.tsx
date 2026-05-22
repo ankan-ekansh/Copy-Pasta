@@ -42,14 +42,14 @@ export function PastaView() {
   }, [id]);
 
   const handleCopy = async () => {
-    if (!state.pasta) return;
+    if (!state.pasta || !navigator.clipboard) return;
     try {
-      await navigator.clipboard?.writeText(state.pasta.ascii_art);
+      await navigator.clipboard.writeText(state.pasta.ascii_art);
       if (timerRef.current) clearTimeout(timerRef.current);
       setCopied(true);
       timerRef.current = setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Clipboard API unavailable or denied
+      // Clipboard write denied
     }
   };
 

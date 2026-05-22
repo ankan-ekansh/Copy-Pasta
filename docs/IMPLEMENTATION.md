@@ -99,7 +99,7 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 ### Handler: `backend/internal/handler/handler.go`
 - `POST /api/convert`: Accepts multipart form with `image` file and optional control fields
   - `mode` field: `"ascii"` (default) or `"braille"` — selects conversion algorithm
-  - `threshold` field: float 0–1 for braille binary threshold (0 = Otsu auto)
+  - `threshold` field: float 0–1 for braille binary threshold (default: 0.5 with dithering enabled)
 - Decodes JPEG/PNG/GIF, routes to appropriate converter, returns JSON response
 - Auto-saves to DB on successful conversion (best-effort, never fails the request)
 - Returns `id` field in response when persistence is available

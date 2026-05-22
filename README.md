@@ -16,7 +16,7 @@ A fun web app that converts meme images into ASCII art that you can copy-paste a
 - **Share page**: View any pasta via `/pasta/:id` — read-only, copyable
 - **History panel**: Recent conversions with share link, view, and delete actions
 - **Session-based ownership**: Anonymous cookie-based sessions, no login required
-- **REST API**: Full CRUD for pastas (create, list, view, delete, publish)
+- **REST API**: Manage pastas (list, view, delete, publish) with auto-save on convert
 - **Mobile share presets**: One-tap widths for WhatsApp, iMessage, Twitter, Telegram, Discord, Reddit
 - **Dark/light theme**: Toggle with system preference detection and localStorage persistence
 - **Configurable output**: Width slider, invert, A/B mode toggle (ASCII vs Braille)

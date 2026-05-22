@@ -24,7 +24,7 @@ func CORS() func(http.Handler) http.Handler {
 	origins := []string{
 		"http://localhost:3000",
 		"http://localhost:8080",
-		"https://copy-pasta.happyflower-831a5c58.eastus.azurecontainerapps.io",
+		"https://copy-pasta.salmondesert-9297c655.centralindia.azurecontainerapps.io",
 	}
 	allowCreds := true
 	if env := os.Getenv("CORS_ORIGINS"); env != "" {

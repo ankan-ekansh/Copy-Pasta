@@ -2,7 +2,7 @@
 
 > Turn memes into ASCII art — paste, convert, copy, share!
 
-**Live**: https://copy-pasta.happyflower-831a5c58.eastus.azurecontainerapps.io
+**Live**: https://copy-pasta.salmondesert-9297c655.centralindia.azurecontainerapps.io
 
 A fun web app that converts meme images into ASCII art that you can copy-paste anywhere. Built with Go and React as a learning playground for backend development, frontend polish, and progressive productionization.
 

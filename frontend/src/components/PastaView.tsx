@@ -29,12 +29,15 @@ export function PastaView() {
   }, []);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      dispatch({ type: 'failure', message: 'No pasta ID provided' });
+      return;
+    }
     const controller = new AbortController();
     dispatch({ type: 'fetch' });
     getPasta(id)
       .then((p) => { if (!controller.signal.aborted) dispatch({ type: 'success', pasta: p }); })
-      .catch((err) => { if (!controller.signal.aborted) dispatch({ type: 'failure', message: err.message }); });
+      .catch((err) => { if (!controller.signal.aborted) dispatch({ type: 'failure', message: err instanceof Error ? err.message : 'Failed to load pasta' }); });
     return () => controller.abort();
   }, [id]);
 

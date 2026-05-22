@@ -132,6 +132,13 @@ else
     exit 1
   fi
 
+  # Validate password is hex-only (URL-safe for postgres:// URI)
+  if ! printf '%s' "$PG_ADMIN_PASSWORD" | grep -qE '^[0-9a-fA-F]+$'; then
+    echo "❌ Error: PG_ADMIN_PASSWORD must be hex-only (0-9, a-f)."
+    echo "   Generate with: export PG_ADMIN_PASSWORD=\$(openssl rand -hex 20)"
+    exit 1
+  fi
+
   echo "🐘 Creating PostgreSQL Flexible Server (B1ms — free tier eligible)..."
   az postgres flexible-server create \
     --resource-group "$RESOURCE_GROUP" \
@@ -209,9 +216,9 @@ PG_FQDN=$(az postgres flexible-server show \
 
 # --- Step 6: Set DATABASE_URL as Container App secret ---
 if [ -n "${PG_ADMIN_PASSWORD:-}" ]; then
-  # Validate password is hex-only (URL-safe). Reject if it contains special chars
-  # that would break the postgres:// URI without encoding.
-  if ! echo "$PG_ADMIN_PASSWORD" | grep -qE '^[0-9a-fA-F]+$'; then
+  # Validate hex-only (same check as Step 5, covers the case where server
+  # already existed but user is updating the secret with a new password)
+  if ! printf '%s' "$PG_ADMIN_PASSWORD" | grep -qE '^[0-9a-fA-F]+$'; then
     echo "❌ Error: PG_ADMIN_PASSWORD must be hex-only (0-9, a-f)."
     echo "   Generate with: export PG_ADMIN_PASSWORD=\$(openssl rand -hex 20)"
     exit 1
@@ -238,8 +245,9 @@ else
     --resource-group "$RESOURCE_GROUP" \
     --query "[?name=='database-url'] | length(@)" -o tsv)
   if [ "$SECRET_EXISTS" = "0" ]; then
-    echo "⚠️  WARNING: PG_ADMIN_PASSWORD not set and 'database-url' secret is missing!"
+    echo "❌ Error: PG_ADMIN_PASSWORD not set and 'database-url' secret is missing!"
     echo "   Set PG_ADMIN_PASSWORD and re-run to configure the database connection."
+    exit 1
   else
     # Ensure env var binding is intact (repairs partial/failed previous runs)
     echo "⏭️  DATABASE_URL secret exists — ensuring env var binding is intact..."

@@ -48,14 +48,17 @@ The setup script contains PostgreSQL server name, admin username, and database n
 
 **What protects the database:**
 1. **Password** — never in source code; passed via `PG_ADMIN_PASSWORD` env var at runtime
-2. **Firewall** — only Azure services (Container App) can connect; public internet blocked
+2. **Firewall** — only Azure services can reach the server; public internet blocked
 3. **SSL** — `sslmode=require` enforced in the connection string
 
 #### Network security approach
 
-The PostgreSQL server is created with `--public-access 0.0.0.0` which enables public networking but restricts connections to Azure-internal services only. The Azure CLI auto-adds a firewall rule for the provisioner's client IP during creation — the setup script **automatically removes this** after provisioning, leaving only the `AllowAzureServices` rule (0.0.0.0–0.0.0.0).
+The PostgreSQL server is created with `--public-access 0.0.0.0` which enables public networking but restricts connections to Azure-internal services only. On every run, the setup script:
 
-**Result:** Any Azure service (across all subscriptions) with the `AllowAzureServices` rule can reach the database. In practice, only our Container App connects because it has the credentials. No external (non-Azure) IP can connect.
+1. **Removes** all firewall rules whose IP range isn't exactly `0.0.0.0–0.0.0.0` (e.g., auto-added client IP rules)
+2. **Ensures** a rule named `AllowAzureServices` with range `0.0.0.0–0.0.0.0` exists
+
+**Result:** Any Azure service (across all subscriptions) can reach the database at the network level. In practice, only our Container App connects because it has the credentials. No external (non-Azure) IP can connect.
 
 If you need temporary local access for debugging:
 ```bash
@@ -113,7 +116,7 @@ az containerapp update \
 |----------|---------|-------------|
 | `PORT` | `8080` | Server listen port |
 | `STATIC_DIR` | `static` | Path to frontend build files |
-| `CORS_ORIGINS` | `*` | Comma-separated allowed origins |
+| `CORS_ORIGINS` | (hardcoded list) | Comma-separated allowed origins (overrides defaults) |
 
 ## Monitoring
 

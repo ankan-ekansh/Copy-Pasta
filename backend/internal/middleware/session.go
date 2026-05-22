@@ -24,13 +24,14 @@ func Session(next http.Handler) http.Handler {
 			sessionID = cookie.Value
 		} else {
 			sessionID = uuid.New().String()
+			secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 			http.SetCookie(w, &http.Cookie{
 				Name:     cookieName,
 				Value:    sessionID,
 				Path:     "/",
 				MaxAge:   365 * 24 * 60 * 60, // 1 year
 				HttpOnly: true,
-				Secure:   r.TLS != nil,
+				Secure:   secure,
 				SameSite: http.SameSiteLaxMode,
 			})
 		}

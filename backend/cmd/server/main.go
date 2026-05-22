@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/handler"
 	appmiddleware "github.com/ankan-ekansh/Copy-Pasta/backend/internal/middleware"
@@ -19,15 +20,19 @@ func main() {
 	appmiddleware.Register(r)
 
 	// Connect to database if DATABASE_URL is set
+	// Connect to database if DATABASE_URL is set
 	var s store.Store
 	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
 		var err error
-		s, err = store.NewPostgres(context.Background(), dbURL)
+		s, err = store.NewPostgres(ctx, dbURL)
 		if err != nil {
-			log.Fatalf("failed to connect to database: %v", err)
+			log.Printf("WARNING: failed to connect to database: %v — persistence disabled", err)
+		} else {
+			defer s.Close()
+			log.Println("connected to database")
 		}
-		defer s.Close()
-		log.Println("connected to database")
 	} else {
 		log.Println("DATABASE_URL not set, persistence disabled")
 	}

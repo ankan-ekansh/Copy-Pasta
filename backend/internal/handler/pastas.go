@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/store"
 	"github.com/go-chi/chi/v5"
@@ -55,7 +56,7 @@ func (h *Handler) GetPasta(w http.ResponseWriter, r *http.Request) {
 		Height:    pasta.Height,
 		Mode:      pasta.Mode,
 		IsPublic:  pasta.IsPublic,
-		CreatedAt: pasta.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		CreatedAt: pasta.CreatedAt.UTC().Format(time.RFC3339),
 	})
 }
 
@@ -100,7 +101,7 @@ func (h *Handler) ListPastas(w http.ResponseWriter, r *http.Request) {
 			Height:    p.Height,
 			Mode:      p.Mode,
 			IsPublic:  p.IsPublic,
-			CreatedAt: p.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339),
 		})
 	}
 

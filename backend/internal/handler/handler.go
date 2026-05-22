@@ -253,19 +253,23 @@ func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {
 	var pastaID string
 	if h.store != nil {
 		sessionID := appmiddleware.GetSessionID(r.Context())
-		pasta := &store.Pasta{
-			ID:        store.GenerateID(),
-			SessionID: sessionID,
-			ASCIIArt:  ascii,
-			Width:     width,
-			Height:    height,
-			Mode:      mode,
-		}
-		if err := h.store.Save(r.Context(), pasta); err != nil {
-			// Log but don't fail the request — persistence is best-effort
-			log.Printf("failed to save pasta: %v", err)
+		id, idErr := store.GenerateID()
+		if idErr != nil {
+			log.Printf("failed to generate pasta ID: %v", idErr)
 		} else {
-			pastaID = pasta.ID
+			pasta := &store.Pasta{
+				ID:        id,
+				SessionID: sessionID,
+				ASCIIArt:  ascii,
+				Width:     width,
+				Height:    height,
+				Mode:      mode,
+			}
+			if err := h.store.Save(r.Context(), pasta); err != nil {
+				log.Printf("failed to save pasta: %v", err)
+			} else {
+				pastaID = pasta.ID
+			}
 		}
 	}
 

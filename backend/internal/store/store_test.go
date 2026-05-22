@@ -3,7 +3,10 @@ package store
 import "testing"
 
 func TestGenerateID(t *testing.T) {
-	id := GenerateID()
+	id, err := GenerateID()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(id) != idLength {
 		t.Errorf("expected ID length %d, got %d", idLength, len(id))
 	}
@@ -11,7 +14,10 @@ func TestGenerateID(t *testing.T) {
 	// Ensure uniqueness (basic sanity check)
 	seen := make(map[string]bool)
 	for i := 0; i < 1000; i++ {
-		id := GenerateID()
+		id, err := GenerateID()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if seen[id] {
 			t.Fatalf("duplicate ID generated: %s", id)
 		}
@@ -21,7 +27,10 @@ func TestGenerateID(t *testing.T) {
 
 func TestGenerateID_CharacterSet(t *testing.T) {
 	for i := 0; i < 100; i++ {
-		id := GenerateID()
+		id, err := GenerateID()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		for _, c := range id {
 			found := false
 			for _, a := range idAlphabet {

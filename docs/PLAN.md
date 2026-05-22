@@ -7,7 +7,7 @@ A fun web app where users paste/upload meme images and get ASCII art back that t
 
 ## Cross-cutting: Testing
 
-**Status**: Not started  
+**Status**: In progress  
 **Goal**: Meaningful test coverage, introduced incrementally alongside features.
 
 | Task | Status |

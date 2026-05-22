@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { convertImage, type ConvertResponse, type ConvertMode } from './api/convert';
 import { AsciiOutput } from './components/AsciiOutput';
 import { ImageUploader } from './components/ImageUploader';
+import { HistoryPanel } from './components/HistoryPanel';
 import { ThemeToggle } from './components/ThemeToggle';
 import './App.css';
 
@@ -32,6 +33,7 @@ function App() {
   const [result, setResult] = useState<ConvertResponse | null>(null);
   const [error, setError] = useState('');
   const [isConverting, setIsConverting] = useState(false);
+  const [historyRefresh, setHistoryRefresh] = useState(0);
 
   const handleConvert = async () => {
     if (!file) {
@@ -48,6 +50,7 @@ function App() {
         mode,
       });
       setResult(response);
+      setHistoryRefresh((n) => n + 1);
     } catch (conversionError) {
       setResult(null);
       setError(
@@ -202,7 +205,29 @@ function App() {
           )}
 
           {result ? (
-            <AsciiOutput ascii={result.ascii} width={result.width} height={result.height} />
+            <>
+              <AsciiOutput ascii={result.ascii} width={result.width} height={result.height} />
+              {result.id && (
+                <section className="share-card">
+                  <p className="eyebrow">🔗 Share this pasta</p>
+                  <div className="share-link-row">
+                    <input
+                      type="text"
+                      readOnly
+                      value={`${window.location.origin}/pasta/${result.id}`}
+                      className="share-link-input"
+                    />
+                    <button
+                      type="button"
+                      className="copy-button"
+                      onClick={() => navigator.clipboard.writeText(`${window.location.origin}/pasta/${result.id}`)}
+                    >
+                      📋 Copy link
+                    </button>
+                  </div>
+                </section>
+              )}
+            </>
           ) : (
             !isConverting && (
               <section className="status-card empty-state">
@@ -215,6 +240,10 @@ function App() {
               </section>
             )
           )}
+        </div>
+
+        <div className="history-column">
+          <HistoryPanel refreshTrigger={historyRefresh} />
         </div>
       </main>
     </div>

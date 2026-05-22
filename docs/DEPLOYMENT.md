@@ -18,7 +18,7 @@ Single container running on **Azure Container Apps**:
 
 ```bash
 # Generate a strong password for PostgreSQL (required)
-export PG_ADMIN_PASSWORD=$(openssl rand -base64 24)
+export PG_ADMIN_PASSWORD=$(openssl rand -hex 20)
 
 # Provision all resources (ACR, Container App, PostgreSQL)
 ./infra/setup-azure.sh
@@ -54,7 +54,7 @@ The setup script contains PostgreSQL server name, admin username, and database n
 
 The PostgreSQL server is created with `--public-access 0.0.0.0` which enables public networking but restricts connections to Azure-internal services only. The Azure CLI auto-adds a firewall rule for the provisioner's client IP during creation — the setup script **automatically removes this** after provisioning, leaving only the `AllowAzureServices` rule (0.0.0.0–0.0.0.0).
 
-**Result:** Only Azure services in the same subscription (i.e., the Container App) can reach the database. No external IP can connect.
+**Result:** Any Azure service (across all subscriptions) with the `AllowAzureServices` rule can reach the database. In practice, only our Container App connects because it has the credentials. No external (non-Azure) IP can connect.
 
 If you need temporary local access for debugging:
 ```bash

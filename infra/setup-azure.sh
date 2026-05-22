@@ -34,7 +34,7 @@ echo "ACR:            $ACR_NAME.azurecr.io"
 echo ""
 
 # --- Step 0: Register required resource providers ---
-PROVIDERS=("Microsoft.App" "Microsoft.OperationalInsights" "Microsoft.ContainerRegistry")
+PROVIDERS=("Microsoft.App" "Microsoft.OperationalInsights" "Microsoft.ContainerRegistry" "Microsoft.DBforPostgreSQL")
 for provider in "${PROVIDERS[@]}"; do
   state=$(az provider show --namespace "$provider" --query "registrationState" -o tsv 2>/dev/null || echo "NotRegistered")
   if [ "$state" != "Registered" ]; then
@@ -124,7 +124,7 @@ else
   # Require password from environment
   if [ -z "${PG_ADMIN_PASSWORD:-}" ]; then
     echo "❌ Error: PG_ADMIN_PASSWORD environment variable is required."
-    echo "   Set it before running: export PG_ADMIN_PASSWORD=\$(openssl rand -base64 24)"
+    echo "   Set it before running: export PG_ADMIN_PASSWORD=\$(openssl rand -hex 20)"
     exit 1
   fi
 
@@ -142,40 +142,53 @@ else
     --public-access 0.0.0.0 \
     --yes \
     --output none
+fi
 
-  echo "   Creating database '$PG_DB_NAME'..."
-  az postgres flexible-server db create \
-    --resource-group "$RESOURCE_GROUP" \
-    --server-name "$PG_SERVER_NAME" \
-    --database-name "$PG_DB_NAME" \
-    --output none
+# Ensure database exists (idempotent)
+echo "   Ensuring database '$PG_DB_NAME' exists..."
+az postgres flexible-server db create \
+  --resource-group "$RESOURCE_GROUP" \
+  --server-name "$PG_SERVER_NAME" \
+  --database-name "$PG_DB_NAME" \
+  --output none 2>/dev/null || true
 
-  # Remove auto-added client IP rule, keep only Azure services access
-  echo "   Hardening firewall (removing client IP, keeping Azure-only access)..."
-  CLIENT_RULE=$(az postgres flexible-server firewall-rule list \
-    --resource-group "$RESOURCE_GROUP" \
-    --name "$PG_SERVER_NAME" \
-    --query "[?startIpAddress!='0.0.0.0'].name" -o tsv)
-  if [ -n "$CLIENT_RULE" ]; then
+# Ensure firewall is hardened (idempotent)
+echo "   Ensuring firewall is hardened (Azure-only access)..."
+# Remove any non-Azure rules (client IP rules added during provisioning)
+CLIENT_RULES=$(az postgres flexible-server firewall-rule list \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "$PG_SERVER_NAME" \
+  --query "[?startIpAddress!='0.0.0.0'].name" -o tsv)
+if [ -n "$CLIENT_RULES" ]; then
+  while IFS= read -r rule; do
+    echo "   Removing firewall rule: $rule"
     az postgres flexible-server firewall-rule delete \
       --resource-group "$RESOURCE_GROUP" \
       --name "$PG_SERVER_NAME" \
-      --rule-name "$CLIENT_RULE" \
+      --rule-name "$rule" \
       --yes \
       --output none
-  fi
+  done <<< "$CLIENT_RULES"
+fi
 
-  # Ensure Azure services rule exists
+# Ensure AllowAzureServices rule exists
+AZURE_RULE_EXISTS=$(az postgres flexible-server firewall-rule list \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "$PG_SERVER_NAME" \
+  --query "[?name=='AllowAzureServices'] | length(@)" -o tsv)
+if [ "$AZURE_RULE_EXISTS" = "0" ]; then
   az postgres flexible-server firewall-rule create \
     --resource-group "$RESOURCE_GROUP" \
     --name "$PG_SERVER_NAME" \
     --rule-name AllowAzureServices \
     --start-ip-address 0.0.0.0 \
     --end-ip-address 0.0.0.0 \
-    --output none 2>/dev/null || true
+    --output none
 fi
 
 # Build DATABASE_URL
+# NOTE: Currently uses admin user for simplicity. For production workloads,
+# create a dedicated app role with limited permissions (SELECT, INSERT, UPDATE, DELETE).
 PG_FQDN=$(az postgres flexible-server show \
   --name "$PG_SERVER_NAME" \
   --resource-group "$RESOURCE_GROUP" \
@@ -183,14 +196,16 @@ PG_FQDN=$(az postgres flexible-server show \
 
 # --- Step 6: Set DATABASE_URL as Container App secret ---
 if [ -n "${PG_ADMIN_PASSWORD:-}" ]; then
-  DATABASE_URL="postgres://${PG_ADMIN_USER}:${PG_ADMIN_PASSWORD}@${PG_FQDN}:5432/${PG_DB_NAME}?sslmode=require"
+  # URL-encode the password to handle any special characters
+  ENCODED_PASSWORD=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${PG_ADMIN_PASSWORD}', safe=''))")
+  DATABASE_URL="postgres://${PG_ADMIN_USER}:${ENCODED_PASSWORD}@${PG_FQDN}:5432/${PG_DB_NAME}?sslmode=require"
 
   echo "🔗 Setting DATABASE_URL on Container App..."
   az containerapp secret set \
     --name "$CONTAINER_APP_NAME" \
     --resource-group "$RESOURCE_GROUP" \
     --secrets "database-url=$DATABASE_URL" \
-    --output none 2>/dev/null || true
+    --output none
 
   az containerapp update \
     --name "$CONTAINER_APP_NAME" \

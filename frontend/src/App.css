@@ -459,6 +459,7 @@
   color: var(--text);
   font-size: 0.85rem;
   font-family: monospace;
+  min-width: 0;
 }
 
 .history-list {
@@ -516,4 +517,24 @@
 
 .history-btn-danger:hover {
   background: #f8d7da;
+}
+
+/* PastaView */
+.pasta-view-back-link {
+  display: inline-block;
+  margin-top: 1rem;
+  text-decoration: none;
+}
+
+.pasta-view-full-width {
+  grid-column: 1 / -1;
+}
+
+.pasta-view-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pasta-view-nav-link {
+  text-decoration: none;
 }

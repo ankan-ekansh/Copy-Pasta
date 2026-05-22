@@ -76,7 +76,7 @@ export function PastaView() {
           <section className="status-card empty-state">
             <h2>😵 {state.error || 'This pasta does not exist'}</h2>
             <p>It may have been deleted or the link is incorrect.</p>
-            <Link to="/" className="primary-button" style={{ display: 'inline-block', marginTop: '1rem', textDecoration: 'none' }}>
+            <Link to="/" className="primary-button pasta-view-back-link">
               ← Make your own pasta
             </Link>
           </section>
@@ -101,17 +101,17 @@ export function PastaView() {
       </header>
 
       <main className="app-grid">
-        <div className="output-column" style={{ gridColumn: '1 / -1' }}>
+        <div className="output-column pasta-view-full-width">
           <section className="ascii-card">
             <div className="ascii-header">
               <span>
                 {pasta.width}×{pasta.height} • Created {new Date(pasta.created_at).toLocaleDateString()}
               </span>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div className="pasta-view-actions">
                 <button type="button" className="secondary-button" onClick={handleCopy}>
                   {copied ? '✅ Copied!' : '📋 Copy'}
                 </button>
-                <Link to="/" className="secondary-button" style={{ textDecoration: 'none' }}>
+                <Link to="/" className="secondary-button pasta-view-nav-link">
                   🍝 Make your own
                 </Link>
               </div>

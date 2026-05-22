@@ -175,8 +175,8 @@ CREATE INDEX idx_pastas_public ON pastas(is_public, created_at);
 - `DELETE /api/pastas/:id` — atomic ownership check (session_id in WHERE)
 - Frontend "My Pastas" panel — list of recent conversions with share/delete ✅
 
-#### Step 6: Publish toggle ✅
-- `PATCH /api/pastas/:id` — atomic ownership check (session_id in WHERE)
+#### Step 6: Set visibility ✅
+- `PATCH /api/pastas/:id` — sets `is_public` to provided value, atomic ownership check (session_id in WHERE)
 - "Publish to gallery" button in UI ⬜ (deferred to Phase 5)
 - Prepares data for Phase 5 gallery
 

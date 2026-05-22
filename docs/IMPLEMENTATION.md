@@ -76,9 +76,13 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 **Algorithm:**
 1. **Resize** — Scale image so width in pixels = `Width × 2`, height adjusted with aspect ratio correction (÷4 rows per char)
 2. **Grayscale** — Convert to gamma-correct luminance (same BT.709 formula as ASCII mode)
-3. **Otsu's thresholding** — Automatic binary threshold that maximizes between-class variance (no manual tuning needed)
-4. **Dot mapping** — Each 2×4 block maps to Braille dot positions: `[0,3 / 1,4 / 2,5 / 6,7]` → bit offset from U+2800
-5. **Character assembly** — Each character is `rune(0x2800 + dotBits)`
+3. **Histogram normalization** — Stretch brightness to full 0–1 range
+4. **Edge detection** — Sobel operator blended into brightness (stronger at narrow widths)
+5. **Contrast boost** — Enhance detail (stronger at narrow widths)
+6. **Dithering** — Floyd-Steinberg error diffusion (always enabled via API; pushes pixels toward 0 or 1, simulating grayscale through dot density)
+7. **Thresholding** — Binary threshold at 0.5 (post-dithering). When dithering is disabled: Otsu's method auto-detects optimal threshold.
+8. **Dot mapping** — Each 2×4 block maps to Braille dot positions: `[0,3 / 1,4 / 2,5 / 6,7]` → bit offset from U+2800
+9. **Character assembly** — Each character is `rune(0x2800 + dotBits)`
 
 **Options:**
 | Field | Type | Default | Description |
@@ -95,7 +99,7 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 | Style | Classic retro terminal | Modern Unicode art |
 | Best for | Artistic/stylized look | Recognizable meme reproduction |
 | Compatibility | Works everywhere | Needs Unicode Braille font support |
-| Grayscale | Yes (12+ levels) | Binary only (on/off dots) |
+| Grayscale | Yes (12+ levels) | Simulated via dithered dot density (binary dots, perceptual grayscale) |
 
 ### Handler: `backend/internal/handler/handler.go`
 - `POST /api/convert`: Accepts multipart form with `image` file and optional control fields
@@ -110,7 +114,7 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 - `GET /api/pastas` — list pastas for current session (paginated via limit/offset)
 - `GET /api/pastas/:id` — view any pasta by ID (unlisted-but-shareable)
 - `DELETE /api/pastas/:id` — delete pasta (atomic ownership check)
-- `PATCH /api/pastas/:id` — toggle is_public (atomic ownership check)
+- `PATCH /api/pastas/:id` — set is_public (atomic ownership check)
 
 ### Middleware: `backend/internal/middleware/middleware.go`
 - Chi's built-in Logger and Recoverer
@@ -158,7 +162,8 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 
 ### Vite Config
 - Proxies `/api` to `http://localhost:8080` in dev mode
-- Production: nginx handles reverse proxy to backend
+- Production: Go backend serves pre-built static files directly (no separate frontend service)
+- Docker Compose (local): nginx container proxies API to backend
 
 ---
 
@@ -285,7 +290,7 @@ Delete a pasta (owner only, atomic ownership check).
 **Errors**: `404 Not Found` (or not owner), `503 Service Unavailable`
 
 ### `PATCH /api/pastas/:id`
-Toggle public/private visibility (owner only).
+Set public/private visibility (owner only).
 
 **Request**: `application/json`
 ```json
@@ -321,9 +326,9 @@ Health check endpoint.
 | Frontend routing | React Router v7 | Declarative, standard SPA routing |
 | Image resize | CatmullRom | Best quality for downscaling |
 | Height factor | 0.45 | Empirically tuned for monospace character aspect ratio |
-| Character ramp | 70-level detailed | Eliminates banding, preserves subtle gradients |
+| Character ramp | 12-level isotropic default | Clean output, no directional noise; 70-level available for large widths |
 | Edge detection | Sobel operator | Good balance of speed and edge quality |
-| Contrast | Histogram stretch + 1.3x boost | Ensures full ramp usage regardless of input dynamic range |
+| Contrast | Histogram stretch + adaptive boost (1.1–1.8×) | Auto-selects based on image stddev |
 | Luminance | Gamma-corrected BT.709 | Perceptually accurate brightness computation |
 | Braille mode | Unicode Braille (U+2800-28FF) | 2×4 dot patterns, 2× resolution vs ASCII |
 | Persistence | PostgreSQL + pgx/v5 | Production-grade, Azure-compatible, graceful degradation |

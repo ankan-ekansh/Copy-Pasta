@@ -237,7 +237,7 @@ else
   SECRET_EXISTS=$(az containerapp secret list \
     --name "$CONTAINER_APP_NAME" \
     --resource-group "$RESOURCE_GROUP" \
-    --query "[?name=='database-url'] | length(@)" -o tsv 2>/dev/null || echo "0")
+    --query "[?name=='database-url'] | length(@)" -o tsv)
   if [ "$SECRET_EXISTS" = "0" ]; then
     echo "⚠️  WARNING: PG_ADMIN_PASSWORD not set and 'database-url' secret is missing!"
     echo "   Set PG_ADMIN_PASSWORD and re-run to configure the database connection."

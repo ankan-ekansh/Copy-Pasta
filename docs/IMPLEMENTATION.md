@@ -84,7 +84,7 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | Width | int | 80 | Output width in Braille characters (effective px = width×2) |
-| Threshold | float64 | 0 (auto) | Binary threshold (0 = Otsu auto-detect when dithering disabled) |
+| Threshold | float64 | 0 | Binary threshold. With dithering (always on via API): 0 → 0.5. Without dithering: 0 → Otsu auto-detect |
 | Invert | bool | false | Invert dot pattern |
 | Dither | bool | false | Floyd-Steinberg dithering (always `true` via API) |
 
@@ -100,7 +100,7 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 ### Handler: `backend/internal/handler/handler.go`
 - `POST /api/convert`: Accepts multipart form with `image` file and optional control fields
   - `mode` field: `"ascii"` (default) or `"braille"` — selects conversion algorithm
-  - `threshold` field: float 0–1 for braille binary threshold (0 = auto; dithering is always enabled in braille mode)
+  - `threshold` field: float 0–1 for braille mode. If omitted or 0, defaults to 0.5 (since the API always enables dithering). Otsu auto-threshold is only used when dithering is disabled (not exposed via API).
 - Decodes JPEG/PNG/GIF, routes to appropriate converter, returns JSON response
 - Auto-saves to DB on successful conversion (best-effort, never fails the request)
 - Returns `id` field in response when persistence is available
@@ -222,7 +222,7 @@ Convert an image to ASCII art.
 | width | int | No | Output width in chars (default: 150) |
 | invert | bool | No | Invert brightness mapping |
 | mode | string | No | `"ascii"` (default) or `"braille"` |
-| threshold | float | No | Braille binary threshold 0-1 (0 = auto; dithering always enabled) |
+| threshold | float | No | Braille threshold 0-1. Omit or 0 → defaults to 0.5 (dithering always on) |
 | edgeMix | float | No | Edge detection blend 0-1 (default: auto based on image) |
 | contrast | float | No | Contrast boost 0.1-3.0 (default: auto based on image) |
 | charRamp | string | No | Custom character ramp string |

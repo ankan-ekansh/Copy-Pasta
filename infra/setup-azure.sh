@@ -145,21 +145,30 @@ else
 fi
 
 # Ensure database exists (idempotent)
-echo "   Ensuring database '$PG_DB_NAME' exists..."
-az postgres flexible-server db create \
+DB_EXISTS=$(az postgres flexible-server db show \
   --resource-group "$RESOURCE_GROUP" \
   --server-name "$PG_SERVER_NAME" \
   --database-name "$PG_DB_NAME" \
-  --output none 2>/dev/null || true
+  --query "name" -o tsv 2>/dev/null || echo "")
+if [ -z "$DB_EXISTS" ]; then
+  echo "   Creating database '$PG_DB_NAME'..."
+  az postgres flexible-server db create \
+    --resource-group "$RESOURCE_GROUP" \
+    --server-name "$PG_SERVER_NAME" \
+    --database-name "$PG_DB_NAME" \
+    --output none
+else
+  echo "   Database '$PG_DB_NAME' already exists."
+fi
 
 # Ensure firewall is hardened (idempotent)
 echo "   Ensuring firewall is hardened (Azure-only access)..."
-# Remove any non-Azure rules (client IP rules added during provisioning)
-CLIENT_RULES=$(az postgres flexible-server firewall-rule list \
+# Remove any rule that isn't the exact AllowAzureServices (0.0.0.0–0.0.0.0)
+UNWANTED_RULES=$(az postgres flexible-server firewall-rule list \
   --resource-group "$RESOURCE_GROUP" \
   --name "$PG_SERVER_NAME" \
-  --query "[?startIpAddress!='0.0.0.0'].name" -o tsv)
-if [ -n "$CLIENT_RULES" ]; then
+  --query "[?(startIpAddress!='0.0.0.0' || endIpAddress!='0.0.0.0')].name" -o tsv)
+if [ -n "$UNWANTED_RULES" ]; then
   while IFS= read -r rule; do
     echo "   Removing firewall rule: $rule"
     az postgres flexible-server firewall-rule delete \
@@ -168,7 +177,7 @@ if [ -n "$CLIENT_RULES" ]; then
       --rule-name "$rule" \
       --yes \
       --output none
-  done <<< "$CLIENT_RULES"
+  done <<< "$UNWANTED_RULES"
 fi
 
 # Ensure AllowAzureServices rule exists
@@ -196,8 +205,8 @@ PG_FQDN=$(az postgres flexible-server show \
 
 # --- Step 6: Set DATABASE_URL as Container App secret ---
 if [ -n "${PG_ADMIN_PASSWORD:-}" ]; then
-  # URL-encode the password to handle any special characters
-  ENCODED_PASSWORD=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${PG_ADMIN_PASSWORD}', safe=''))")
+  # URL-encode the password safely (read from env to avoid shell quoting issues)
+  ENCODED_PASSWORD=$(python3 -c "import os, urllib.parse; print(urllib.parse.quote(os.environ['PG_ADMIN_PASSWORD'], safe=''))")
   DATABASE_URL="postgres://${PG_ADMIN_USER}:${ENCODED_PASSWORD}@${PG_FQDN}:5432/${PG_DB_NAME}?sslmode=require"
 
   echo "🔗 Setting DATABASE_URL on Container App..."

@@ -12,9 +12,9 @@ A fun web app where users paste/upload meme images and get ASCII art back that t
 
 | Task | Status |
 |------|--------|
-| Converter unit tests (Step 1) | ⬜ |
+| Converter unit tests (Step 1) | ✅ |
 | Handler integration tests (Step 2) | ⬜ |
-| Helper/utility tests (Step 3) | ⬜ |
+| Helper/utility tests (Step 3) | ✅ |
 | Frontend tests with Vitest (Step 4) | ⬜ |
 
 See **[TESTING.md](TESTING.md)** for the full testing plan.

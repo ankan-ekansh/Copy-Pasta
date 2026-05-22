@@ -44,7 +44,7 @@ export function PastaView() {
   const handleCopy = async () => {
     if (!state.pasta) return;
     try {
-      await navigator.clipboard.writeText(state.pasta.ascii_art);
+      await navigator.clipboard?.writeText(state.pasta.ascii_art);
       if (timerRef.current) clearTimeout(timerRef.current);
       setCopied(true);
       timerRef.current = setTimeout(() => setCopied(false), 2000);

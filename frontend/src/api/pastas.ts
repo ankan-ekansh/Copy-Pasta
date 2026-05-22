@@ -20,7 +20,7 @@ export async function getPasta(id: string): Promise<Pasta> {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Not found' }));
+    const error = await response.json().catch(() => ({ error: response.statusText || 'Request failed' }));
     throw new Error(error.error || 'Failed to load pasta');
   }
 
@@ -34,7 +34,7 @@ export async function listPastas(limit = 20, offset = 0): Promise<Pasta[]> {
 
   if (!response.ok) {
     if (response.status === 503) return []; // persistence not configured
-    const error = await response.json().catch(() => ({ error: 'Failed to load history' }));
+    const error = await response.json().catch(() => ({ error: response.statusText || 'Request failed' }));
     throw new Error(error.error || 'Failed to load history');
   }
 
@@ -49,7 +49,7 @@ export async function deletePasta(id: string): Promise<void> {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Delete failed' }));
+    const error = await response.json().catch(() => ({ error: response.statusText || 'Request failed' }));
     throw new Error(error.error || 'Delete failed');
   }
 }

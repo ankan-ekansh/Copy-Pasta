@@ -35,6 +35,10 @@ function App() {
   const [isConverting, setIsConverting] = useState(false);
   const [historyRefresh, setHistoryRefresh] = useState(0);
 
+  const shareUrl = result?.id
+    ? `${window.location.origin}/pasta/${encodeURIComponent(result.id)}`
+    : null;
+
   const handleConvert = async () => {
     if (!file) {
       setError('Pick a meme first so we have something to noodle.');
@@ -207,7 +211,7 @@ function App() {
           {result ? (
             <>
               <AsciiOutput ascii={result.ascii} width={result.width} height={result.height} />
-              {result.id && (
+              {shareUrl && (
                 <section className="share-card">
                   <p className="eyebrow">🔗 Share this pasta</p>
                   <div className="share-link-row">
@@ -215,13 +219,13 @@ function App() {
                       type="text"
                       readOnly
                       aria-label="Shareable pasta link"
-                      value={`${window.location.origin}/pasta/${encodeURIComponent(result.id!)}`}
+                      value={shareUrl}
                       className="share-link-input"
                     />
                     <button
                       type="button"
                       className="secondary-button"
-                      onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/pasta/${encodeURIComponent(result.id!)}`)?.catch(() => {}); }}
+                      onClick={() => { navigator.clipboard?.writeText(shareUrl)?.catch(() => {}); }}
                     >
                       📋 Copy link
                     </button>

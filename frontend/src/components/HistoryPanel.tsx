@@ -26,11 +26,11 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
   const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
-    const controller = new AbortController();
+    let cancelled = false;
     listPastas(10)
-      .then((items) => { if (!controller.signal.aborted) dispatch({ type: 'loaded', pastas: items }); })
-      .catch((err) => { if (!controller.signal.aborted) dispatch({ type: 'error', message: err instanceof Error ? err.message : 'Failed to load' }); });
-    return () => controller.abort();
+      .then((items) => { if (!cancelled) dispatch({ type: 'loaded', pastas: items }); })
+      .catch((err) => { if (!cancelled) dispatch({ type: 'error', message: err instanceof Error ? err.message : 'Failed to load' }); });
+    return () => { cancelled = true; };
   }, [refreshTrigger]);
 
   const handleDelete = async (id: string) => {

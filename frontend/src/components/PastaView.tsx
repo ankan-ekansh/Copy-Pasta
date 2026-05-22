@@ -33,12 +33,12 @@ export function PastaView() {
       dispatch({ type: 'failure', message: 'No pasta ID provided' });
       return;
     }
-    const controller = new AbortController();
+    let cancelled = false;
     dispatch({ type: 'fetch' });
     getPasta(id)
-      .then((p) => { if (!controller.signal.aborted) dispatch({ type: 'success', pasta: p }); })
-      .catch((err) => { if (!controller.signal.aborted) dispatch({ type: 'failure', message: err instanceof Error ? err.message : 'Failed to load pasta' }); });
-    return () => controller.abort();
+      .then((p) => { if (!cancelled) dispatch({ type: 'success', pasta: p }); })
+      .catch((err) => { if (!cancelled) dispatch({ type: 'failure', message: err instanceof Error ? err.message : 'Failed to load pasta' }); });
+    return () => { cancelled = true; };
   }, [id]);
 
   const handleCopy = async () => {
@@ -70,7 +70,7 @@ export function PastaView() {
         <header className="hero-panel">
           <ThemeToggle />
           <h1>🍝 Copy-Pasta</h1>
-          <p className="hero-subtitle">Pasta not found</p>
+          <p className="hero-subtitle">Something went wrong</p>
         </header>
         <main className="app-grid">
           <section className="status-card empty-state">

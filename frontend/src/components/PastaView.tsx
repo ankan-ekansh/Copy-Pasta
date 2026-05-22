@@ -19,7 +19,7 @@ function fetchReducer(state: FetchState, action: FetchAction): FetchState {
 }
 
 export function PastaView() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams<{ id?: string }>();
   const [state, dispatch] = useReducer(fetchReducer, { pasta: null, loading: true, error: '' });
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

@@ -210,9 +210,14 @@ PG_FQDN=$(az postgres flexible-server show \
 
 # --- Step 6: Set DATABASE_URL as Container App secret ---
 if [ -n "${PG_ADMIN_PASSWORD:-}" ]; then
-  # Password is generated with `openssl rand -hex` (0-9, a-f only) so it's
-  # inherently URL-safe — no encoding needed. If a custom password with special
-  # chars is used, ensure it's URL-encoded before setting PG_ADMIN_PASSWORD.
+  # Validate password is hex-only (URL-safe). Reject if it contains special chars
+  # that would break the postgres:// URI without encoding.
+  if ! echo "$PG_ADMIN_PASSWORD" | grep -qE '^[0-9a-fA-F]+$'; then
+    echo "❌ Error: PG_ADMIN_PASSWORD must be hex-only (0-9, a-f)."
+    echo "   Generate with: export PG_ADMIN_PASSWORD=\$(openssl rand -hex 20)"
+    exit 1
+  fi
+
   DATABASE_URL="postgres://${PG_ADMIN_USER}:${PG_ADMIN_PASSWORD}@${PG_FQDN}:5432/${PG_DB_NAME}?sslmode=require"
 
   echo "🔗 Setting DATABASE_URL on Container App..."
@@ -228,7 +233,7 @@ if [ -n "${PG_ADMIN_PASSWORD:-}" ]; then
     --set-env-vars "DATABASE_URL=secretref:database-url" \
     --output none
 else
-  # Verify the secret actually exists when skipping password setup
+  # Verify the secret and env var binding exist when skipping password setup
   SECRET_EXISTS=$(az containerapp secret list \
     --name "$CONTAINER_APP_NAME" \
     --resource-group "$RESOURCE_GROUP" \
@@ -237,7 +242,13 @@ else
     echo "⚠️  WARNING: PG_ADMIN_PASSWORD not set and 'database-url' secret is missing!"
     echo "   Set PG_ADMIN_PASSWORD and re-run to configure the database connection."
   else
-    echo "⏭️  PG_ADMIN_PASSWORD not set — DATABASE_URL secret already configured."
+    # Ensure env var binding is intact (repairs partial/failed previous runs)
+    echo "⏭️  DATABASE_URL secret exists — ensuring env var binding is intact..."
+    az containerapp update \
+      --name "$CONTAINER_APP_NAME" \
+      --resource-group "$RESOURCE_GROUP" \
+      --set-env-vars "DATABASE_URL=secretref:database-url" \
+      --output none
   fi
 fi
 

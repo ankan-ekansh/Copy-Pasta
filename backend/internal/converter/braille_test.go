@@ -24,17 +24,24 @@ func TestConvertBraille_EmptyImage(t *testing.T) {
 }
 
 func TestConvertBraille_DefaultWidth(t *testing.T) {
-	img := solidImage(200, 200, color.Gray{128})
-	result := ConvertBraille(img, BrailleOptions{Width: 0})
+	// Use a gradient image — ensures non-empty braille chars across the full width
+	img := image.NewRGBA(image.Rect(0, 0, 200, 200))
+	for y := 0; y < 200; y++ {
+		for x := 0; x < 200; x++ {
+			img.Set(x, y, color.Gray{uint8(x * 255 / 200)})
+		}
+	}
+	result := ConvertBraille(img, BrailleOptions{Width: 0, Dither: true})
 	if result == "" {
 		t.Fatal("expected non-empty result")
 	}
 	// Default braille width is 80
+	// With a full gradient + dithering, rightmost chars should have dots
 	firstLine := strings.SplitN(result, "\n", 2)[0]
-	// Braille lines are trimmed of trailing empty chars, so length ≤ 80
 	lineRunes := []rune(firstLine)
-	if len(lineRunes) > 80 {
-		t.Errorf("expected line width ≤ 80, got %d", len(lineRunes))
+	// The line might be slightly trimmed but should be close to 80
+	if len(lineRunes) < 70 || len(lineRunes) > 80 {
+		t.Errorf("expected line width near 80 (default), got %d", len(lineRunes))
 	}
 }
 

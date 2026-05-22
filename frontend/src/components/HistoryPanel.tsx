@@ -1,4 +1,4 @@
-import { useState, useEffect, useReducer } from 'react';
+import { useEffect, useReducer } from 'react';
 import { Link } from 'react-router-dom';
 import { listPastas, deletePasta, type Pasta } from '../api/pastas';
 
@@ -6,26 +6,29 @@ interface HistoryPanelProps {
   refreshTrigger?: number;
 }
 
-type State = { pastas: Pasta[]; loading: boolean; error: string };
+type State = { pastas: Pasta[]; loading: boolean; error: string; deleteError: string };
 type Action =
   | { type: 'fetch' }
   | { type: 'loaded'; pastas: Pasta[] }
   | { type: 'error'; message: string }
-  | { type: 'remove'; id: string };
+  | { type: 'remove'; id: string }
+  | { type: 'delete-error'; message: string }
+  | { type: 'clear-delete-error' };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'fetch': return { ...state, loading: true, error: '' };
-    case 'loaded': return { pastas: action.pastas, loading: false, error: '' };
+    case 'fetch': return { ...state, loading: true, error: '', deleteError: '' };
+    case 'loaded': return { ...state, pastas: action.pastas, loading: false, error: '' };
     case 'error': return { ...state, loading: false, error: action.message };
     case 'remove': return { ...state, pastas: state.pastas.filter((p) => p.id !== action.id) };
+    case 'delete-error': return { ...state, deleteError: action.message };
+    case 'clear-delete-error': return { ...state, deleteError: '' };
     default: return state;
   }
 }
 
 export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
-  const [state, dispatch] = useReducer(reducer, { pastas: [], loading: true, error: '' });
-  const [deleteError, setDeleteError] = useState('');
+  const [state, dispatch] = useReducer(reducer, { pastas: [], loading: true, error: '', deleteError: '' });
 
   useEffect(() => {
     let cancelled = false;
@@ -38,11 +41,11 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
 
   const handleDelete = async (id: string) => {
     try {
-      setDeleteError('');
+      dispatch({ type: 'clear-delete-error' });
       await deletePasta(id);
       dispatch({ type: 'remove', id });
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'Delete failed');
+      dispatch({ type: 'delete-error', message: err instanceof Error ? err.message : 'Delete failed' });
     }
   };
 
@@ -73,7 +76,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
     return (
       <section className="history-card">
         <p className="eyebrow">📜 Recent pastas</p>
-        <p className="mode-hint">No saved pastas yet. Convert an image to get started!</p>
+        <p className="mode-hint">No saved pastas yet. History appears here when persistence is enabled.</p>
       </section>
     );
   }
@@ -81,7 +84,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
   return (
     <section className="history-card">
       <p className="eyebrow">📜 Recent pastas</p>
-      {deleteError && <p className="error-banner">⚠️ {deleteError}</p>}
+      {state.deleteError && <p className="error-banner">⚠️ {state.deleteError}</p>}
       <ul className="history-list">
         {state.pastas.map((pasta) => (
           <li key={pasta.id} className="history-item">

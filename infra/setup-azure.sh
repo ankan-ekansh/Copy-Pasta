@@ -149,12 +149,11 @@ else
 fi
 
 # Ensure database exists (idempotent)
-DB_EXISTS=$(az postgres flexible-server db show \
+DB_EXISTS=$(az postgres flexible-server db list \
   --resource-group "$RESOURCE_GROUP" \
   --server-name "$PG_SERVER_NAME" \
-  --database-name "$PG_DB_NAME" \
-  --query "name" -o tsv 2>/dev/null || echo "")
-if [ -z "$DB_EXISTS" ]; then
+  --query "[?name=='$PG_DB_NAME'] | length(@)" -o tsv)
+if [ "$DB_EXISTS" = "0" ]; then
   echo "   Creating database '$PG_DB_NAME'..."
   az postgres flexible-server db create \
     --resource-group "$RESOURCE_GROUP" \

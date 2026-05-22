@@ -215,13 +215,13 @@ function App() {
                       type="text"
                       readOnly
                       aria-label="Shareable pasta link"
-                      value={`${window.location.origin}/pasta/${result.id}`}
+                      value={`${window.location.origin}/pasta/${encodeURIComponent(result.id!)}`}
                       className="share-link-input"
                     />
                     <button
                       type="button"
                       className="secondary-button"
-                      onClick={() => navigator.clipboard.writeText(`${window.location.origin}/pasta/${result.id}`).catch(() => {})}
+                      onClick={() => navigator.clipboard.writeText(`${window.location.origin}/pasta/${encodeURIComponent(result.id!)}`).catch(() => {})}
                     >
                       📋 Copy link
                     </button>

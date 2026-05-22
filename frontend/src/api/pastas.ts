@@ -15,7 +15,7 @@ export interface ListResponse {
 }
 
 export async function getPasta(id: string): Promise<Pasta> {
-  const response = await fetch(`/api/pastas/${id}`, {
+  const response = await fetch(`/api/pastas/${encodeURIComponent(id)}`, {
     credentials: 'include',
   });
 
@@ -43,7 +43,7 @@ export async function listPastas(limit = 20, offset = 0): Promise<Pasta[]> {
 }
 
 export async function deletePasta(id: string): Promise<void> {
-  const response = await fetch(`/api/pastas/${id}`, {
+  const response = await fetch(`/api/pastas/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     credentials: 'include',
   });

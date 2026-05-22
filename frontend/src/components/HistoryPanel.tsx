@@ -47,7 +47,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
   };
 
   const handleCopyLink = (id: string) => {
-    const url = `${window.location.origin}/pasta/${id}`;
+    const url = `${window.location.origin}/pasta/${encodeURIComponent(id)}`;
     navigator.clipboard.writeText(url).catch(() => {
       // Clipboard API unavailable or denied — silent fallback
     });
@@ -103,7 +103,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
                 🔗
               </button>
               <Link
-                to={`/pasta/${pasta.id}`}
+                to={`/pasta/${encodeURIComponent(pasta.id)}`}
                 className="history-btn"
                 aria-label="View pasta"
               >

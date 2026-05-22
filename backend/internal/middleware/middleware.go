@@ -18,7 +18,14 @@ func Register(r chi.Router) {
 }
 
 func CORS() func(http.Handler) http.Handler {
-	origins := []string{"http://localhost:3000", "http://localhost:8080"}
+	// Default: localhost for dev + production URL.
+	// In production, frontend is served from same origin so CORS rarely applies.
+	// Override with CORS_ORIGINS env var for custom deployments.
+	origins := []string{
+		"http://localhost:3000",
+		"http://localhost:8080",
+		"https://copy-pasta.happyflower-831a5c58.eastus.azurecontainerapps.io",
+	}
 	allowCreds := true
 	if env := os.Getenv("CORS_ORIGINS"); env != "" {
 		parts := strings.Split(env, ",")

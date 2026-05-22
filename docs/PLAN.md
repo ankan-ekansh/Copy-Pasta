@@ -63,7 +63,7 @@ See **[TESTING.md](TESTING.md)** for the full testing plan.
 **Status**: Complete  
 **Goal**: Get the app live on Azure so people can use it. Minimal viable deployment.
 
-**Live URL**: https://copy-pasta.happyflower-831a5c58.eastus.azurecontainerapps.io
+**Live URL**: https://copy-pasta.salmondesert-9297c655.centralindia.azurecontainerapps.io
 
 ### Architecture (Azure)
 ```

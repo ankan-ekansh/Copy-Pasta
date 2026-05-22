@@ -16,12 +16,15 @@ set -euo pipefail
 
 # --- Configuration (customize these) ---
 RESOURCE_GROUP="rg-copy-pasta"
-LOCATION="eastus"
+LOCATION="centralindia"
 ACR_NAME="copypastacr"  # must be globally unique, lowercase, no hyphens
 CONTAINER_APP_ENV="cae-copy-pasta"
 CONTAINER_APP_NAME="copy-pasta"
 IMAGE_NAME="copy-pasta"
 IMAGE_TAG="latest"
+PG_SERVER_NAME="pg-sv-copy-pasta"
+PG_ADMIN_USER="copypasta"
+PG_DB_NAME="copypasta"
 
 echo "🍝 Copy-Pasta Azure Infrastructure Setup"
 echo "========================================="
@@ -113,6 +116,90 @@ APP_URL=$(az containerapp show \
   --name "$CONTAINER_APP_NAME" \
   --resource-group "$RESOURCE_GROUP" \
   --query "properties.configuration.ingress.fqdn" -o tsv)
+
+# --- Step 5: PostgreSQL Flexible Server ---
+if az postgres flexible-server show --name "$PG_SERVER_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+  echo "🐘 PostgreSQL server '$PG_SERVER_NAME' already exists — skipping."
+else
+  # Require password from environment
+  if [ -z "${PG_ADMIN_PASSWORD:-}" ]; then
+    echo "❌ Error: PG_ADMIN_PASSWORD environment variable is required."
+    echo "   Set it before running: export PG_ADMIN_PASSWORD=\$(openssl rand -base64 24)"
+    exit 1
+  fi
+
+  echo "🐘 Creating PostgreSQL Flexible Server (B1ms — free tier eligible)..."
+  az postgres flexible-server create \
+    --resource-group "$RESOURCE_GROUP" \
+    --name "$PG_SERVER_NAME" \
+    --location "$LOCATION" \
+    --admin-user "$PG_ADMIN_USER" \
+    --admin-password "$PG_ADMIN_PASSWORD" \
+    --sku-name Standard_B1ms \
+    --tier Burstable \
+    --storage-size 32 \
+    --version 16 \
+    --public-access 0.0.0.0 \
+    --yes \
+    --output none
+
+  echo "   Creating database '$PG_DB_NAME'..."
+  az postgres flexible-server db create \
+    --resource-group "$RESOURCE_GROUP" \
+    --server-name "$PG_SERVER_NAME" \
+    --database-name "$PG_DB_NAME" \
+    --output none
+
+  # Remove auto-added client IP rule, keep only Azure services access
+  echo "   Hardening firewall (removing client IP, keeping Azure-only access)..."
+  CLIENT_RULE=$(az postgres flexible-server firewall-rule list \
+    --resource-group "$RESOURCE_GROUP" \
+    --name "$PG_SERVER_NAME" \
+    --query "[?startIpAddress!='0.0.0.0'].name" -o tsv)
+  if [ -n "$CLIENT_RULE" ]; then
+    az postgres flexible-server firewall-rule delete \
+      --resource-group "$RESOURCE_GROUP" \
+      --name "$PG_SERVER_NAME" \
+      --rule-name "$CLIENT_RULE" \
+      --yes \
+      --output none
+  fi
+
+  # Ensure Azure services rule exists
+  az postgres flexible-server firewall-rule create \
+    --resource-group "$RESOURCE_GROUP" \
+    --name "$PG_SERVER_NAME" \
+    --rule-name AllowAzureServices \
+    --start-ip-address 0.0.0.0 \
+    --end-ip-address 0.0.0.0 \
+    --output none 2>/dev/null || true
+fi
+
+# Build DATABASE_URL
+PG_FQDN=$(az postgres flexible-server show \
+  --name "$PG_SERVER_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
+  --query "fullyQualifiedDomainName" -o tsv)
+
+# --- Step 6: Set DATABASE_URL as Container App secret ---
+if [ -n "${PG_ADMIN_PASSWORD:-}" ]; then
+  DATABASE_URL="postgres://${PG_ADMIN_USER}:${PG_ADMIN_PASSWORD}@${PG_FQDN}:5432/${PG_DB_NAME}?sslmode=require"
+
+  echo "🔗 Setting DATABASE_URL on Container App..."
+  az containerapp secret set \
+    --name "$CONTAINER_APP_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --secrets "database-url=$DATABASE_URL" \
+    --output none 2>/dev/null || true
+
+  az containerapp update \
+    --name "$CONTAINER_APP_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --set-env-vars "DATABASE_URL=secretref:database-url" \
+    --output none
+else
+  echo "⏭️  PG_ADMIN_PASSWORD not set — skipping DATABASE_URL update (already configured)."
+fi
 
 echo ""
 echo "✅ Infrastructure ready!"

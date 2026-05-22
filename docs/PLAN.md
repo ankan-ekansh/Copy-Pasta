@@ -130,14 +130,14 @@ See **[TESTING.md](TESTING.md)** for the full testing plan.
 
 ```sql
 CREATE TABLE pastas (
-  id TEXT PRIMARY KEY,            -- nanoid, 10 chars (e.g. "V1StGXR8_Z")
+  id TEXT PRIMARY KEY,            -- crypto/rand base62, 10 chars
   session_id TEXT NOT NULL,       -- links to creator's cookie
   ascii_art TEXT NOT NULL,        -- the generated output
   width INT NOT NULL,
   height INT NOT NULL,
   mode TEXT NOT NULL,             -- 'ascii' or 'braille'
   is_public BOOLEAN DEFAULT FALSE, -- opt-in for future gallery (Phase 5)
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_pastas_session ON pastas(session_id);

@@ -221,7 +221,7 @@ Convert an image to ASCII art.
 | width | int | No | Output width in chars (default: 150) |
 | invert | bool | No | Invert brightness mapping |
 | mode | string | No | `"ascii"` (default) or `"braille"` |
-| threshold | float | No | Braille binary threshold 0-1 (0 = Otsu auto) |
+| threshold | float | No | Braille binary threshold 0-1 (default: 0.5 with dithering) |
 | edgeMix | float | No | Edge detection blend 0-1 (default: auto based on image) |
 | contrast | float | No | Contrast boost 0.1-3.0 (default: auto based on image) |
 | charRamp | string | No | Custom character ramp string |
@@ -292,6 +292,9 @@ Toggle public/private visibility (owner only).
 ```
 
 **Response**: `200 OK`
+```json
+{ "is_public": true }
+```
 
 **Errors**: `404 Not Found` (or not owner), `503 Service Unavailable`
 

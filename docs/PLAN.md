@@ -38,7 +38,7 @@ See **[TESTING.md](TESTING.md)** for the full testing plan.
 ---
 
 ## Phase 2: Polish — "Make It Delightful"
-**Status**: In Progress  
+**Status**: Complete (minor stretch items deferred)  
 **Goal**: Improve UX, add styling, and make the output look good.
 
 | Task | Status |
@@ -114,8 +114,8 @@ See **[TESTING.md](TESTING.md)** for the full testing plan.
 
 ---
 
-## Phase 3: Persistence — "Remember the Pastas"
-**Status**: Backend Complete (frontend integration pending)  
+## Phase 3: Persistence — "Remember the Pastas" ✅
+**Status**: Complete  
 **Goal**: Save conversions so users can revisit, share, and (later) browse others' art.
 
 ### Design Decisions
@@ -167,17 +167,17 @@ CREATE INDEX idx_pastas_public ON pastas(is_public, created_at);
 #### Step 4: View shared pasta ✅
 - `GET /api/pastas/:id` — returns pasta by ID
 - **Visibility model**: all pastas are "unlisted but shareable" — anyone with the link can view regardless of `is_public`. The `is_public` flag only controls whether the pasta appears in the Phase 5 gallery/browse feed.
-- Frontend route `/pasta/:id` — renders the shared art (read-only view) ⬜
+- Frontend route `/pasta/:id` — renders the shared art (read-only view) ✅
 - OG meta tags for link previews (stretch) ⬜
 
 #### Step 5: My History ✅
 - `GET /api/pastas` — returns pastas for current session (cookie-based, paginated)
 - `DELETE /api/pastas/:id` — atomic ownership check (session_id in WHERE)
-- Frontend "My Pastas" page — list of recent conversions ⬜
+- Frontend "My Pastas" panel — list of recent conversions with share/delete ✅
 
 #### Step 6: Publish toggle ✅
 - `PATCH /api/pastas/:id` — atomic ownership check (session_id in WHERE)
-- "Publish to gallery" button in UI ⬜
+- "Publish to gallery" button in UI ⬜ (deferred to Phase 5)
 - Prepares data for Phase 5 gallery
 
 ### API Changes

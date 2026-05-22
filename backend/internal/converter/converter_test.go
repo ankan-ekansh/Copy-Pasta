@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 // solidImage creates a uniform-color image of the given size.
@@ -56,8 +57,8 @@ func TestConvert_DefaultWidth(t *testing.T) {
 		t.Fatal("expected non-empty result")
 	}
 	firstLine := strings.SplitN(result, "\n", 2)[0]
-	if len(firstLine) != DefaultWidth {
-		t.Errorf("expected line width %d, got %d", DefaultWidth, len(firstLine))
+	if utf8.RuneCountInString(firstLine) != DefaultWidth {
+		t.Errorf("expected line width %d, got %d", DefaultWidth, utf8.RuneCountInString(firstLine))
 	}
 }
 
@@ -68,8 +69,8 @@ func TestConvert_WidthRespected(t *testing.T) {
 		t.Run(fmt.Sprintf("width_%d", w), func(t *testing.T) {
 			result := Convert(img, Options{Width: w})
 			firstLine := strings.SplitN(result, "\n", 2)[0]
-			if len(firstLine) != w {
-				t.Errorf("width=%d: expected line length %d, got %d", w, w, len(firstLine))
+			if utf8.RuneCountInString(firstLine) != w {
+				t.Errorf("width=%d: expected line length %d, got %d", w, w, utf8.RuneCountInString(firstLine))
 			}
 		})
 	}
@@ -84,8 +85,8 @@ func TestConvert_OutputDimensions(t *testing.T) {
 	}
 	// All lines should be exactly width=50
 	for i, line := range lines {
-		if len(line) != 50 {
-			t.Errorf("line %d: expected length 50, got %d", i, len(line))
+		if utf8.RuneCountInString(line) != 50 {
+			t.Errorf("line %d: expected length 50, got %d", i, utf8.RuneCountInString(line))
 		}
 	}
 	// Height should be approximately width * 0.45 for square images

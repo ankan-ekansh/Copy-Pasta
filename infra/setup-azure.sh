@@ -205,9 +205,10 @@ PG_FQDN=$(az postgres flexible-server show \
 
 # --- Step 6: Set DATABASE_URL as Container App secret ---
 if [ -n "${PG_ADMIN_PASSWORD:-}" ]; then
-  # URL-encode the password safely (read from env to avoid shell quoting issues)
-  ENCODED_PASSWORD=$(python3 -c "import os, urllib.parse; print(urllib.parse.quote(os.environ['PG_ADMIN_PASSWORD'], safe=''))")
-  DATABASE_URL="postgres://${PG_ADMIN_USER}:${ENCODED_PASSWORD}@${PG_FQDN}:5432/${PG_DB_NAME}?sslmode=require"
+  # Password is generated with `openssl rand -hex` (0-9, a-f only) so it's
+  # inherently URL-safe — no encoding needed. If a custom password with special
+  # chars is used, ensure it's URL-encoded before setting PG_ADMIN_PASSWORD.
+  DATABASE_URL="postgres://${PG_ADMIN_USER}:${PG_ADMIN_PASSWORD}@${PG_FQDN}:5432/${PG_DB_NAME}?sslmode=require"
 
   echo "🔗 Setting DATABASE_URL on Container App..."
   az containerapp secret set \

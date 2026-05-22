@@ -20,7 +20,6 @@ func main() {
 	appmiddleware.Register(r)
 
 	// Connect to database if DATABASE_URL is set
-	// Connect to database if DATABASE_URL is set
 	var s store.Store
 	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

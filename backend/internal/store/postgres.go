@@ -35,8 +35,8 @@ func NewPostgres(ctx context.Context, databaseURL string) (*PostgresStore, error
 }
 
 func (s *PostgresStore) migrate(ctx context.Context) error {
-	query := `
-		CREATE TABLE IF NOT EXISTS pastas (
+	statements := []string{
+		`CREATE TABLE IF NOT EXISTS pastas (
 			id TEXT PRIMARY KEY,
 			session_id TEXT NOT NULL,
 			ascii_art TEXT NOT NULL,
@@ -45,12 +45,16 @@ func (s *PostgresStore) migrate(ctx context.Context) error {
 			mode TEXT NOT NULL,
 			is_public BOOLEAN NOT NULL DEFAULT FALSE,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		);
-		CREATE INDEX IF NOT EXISTS idx_pastas_session ON pastas(session_id);
-		CREATE INDEX IF NOT EXISTS idx_pastas_public ON pastas(is_public, created_at);
-	`
-	_, err := s.pool.Exec(ctx, query)
-	return err
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_pastas_session ON pastas(session_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_pastas_public ON pastas(is_public, created_at)`,
+	}
+	for _, stmt := range statements {
+		if _, err := s.pool.Exec(ctx, stmt); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *PostgresStore) Save(ctx context.Context, p *Pasta) error {

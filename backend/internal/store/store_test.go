@@ -12,7 +12,7 @@ func TestGenerateID(t *testing.T) {
 	}
 
 	// Ensure uniqueness (basic sanity check)
-	seen := make(map[string]bool)
+	seen := map[string]bool{id: true}
 	for i := 0; i < 1000; i++ {
 		id, err := GenerateID()
 		if err != nil {

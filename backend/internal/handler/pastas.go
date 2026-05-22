@@ -27,6 +27,8 @@ type listResponse struct {
 }
 
 // GetPasta handles GET /api/pastas/:id — anyone with the link can view.
+// Design: "unlisted but shareable" — is_public only controls gallery visibility (Phase 5),
+// not access. Similar to Google Docs "anyone with the link" sharing model.
 func (h *Handler) GetPasta(w http.ResponseWriter, r *http.Request) {
 	if h.store == nil {
 		writeError(w, http.StatusServiceUnavailable, "persistence not configured")

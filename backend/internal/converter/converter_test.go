@@ -134,12 +134,8 @@ func TestConvert_AllBlack(t *testing.T) {
 }
 
 func TestConvert_WhiteLighterThanBlack(t *testing.T) {
-	// With a two-char ramp, white and black should map to opposite ends
-	white := solidImage(100, 100, color.White)
-	black := solidImage(100, 100, color.Black)
+	// With a two-char ramp on a half-image, verify both chars appear
 	half := halfImage(200, 200)
-
-	// Use the half image to force normalization to use full range
 	result := Convert(half, Options{Width: 20, Contrast: 1.0, EdgeMix: 0, CharRamp: " @"})
 	chars := strings.ReplaceAll(result, "\n", "")
 	hasSpace := strings.Contains(chars, " ")
@@ -147,10 +143,6 @@ func TestConvert_WhiteLighterThanBlack(t *testing.T) {
 	if !hasSpace || !hasAt {
 		t.Errorf("expected both ' ' and '@' in half-image output, got: %q", chars[:20])
 	}
-
-	// Verify all-white uniform is different from all-black uniform (via normalization they're same)
-	_ = white
-	_ = black
 }
 
 func TestConvert_Invert(t *testing.T) {
@@ -248,6 +240,7 @@ func TestReverseString(t *testing.T) {
 		{"a", "a"},
 		{"ab", "ba"},
 		{" .@", "@. "},
+		{RampBlocks, "█▓▒░ "},
 	}
 	for _, tt := range tests {
 		result := reverseString(tt.input)

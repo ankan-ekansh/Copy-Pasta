@@ -1,4 +1,5 @@
 export interface ConvertResponse {
+  id?: string;
   ascii: string;
   width: number;
   height: number;
@@ -27,6 +28,7 @@ export async function convertImage(
   const response = await fetch('/api/convert', {
     method: 'POST',
     body: formData,
+    credentials: 'include',
   });
 
   if (!response.ok) {

@@ -31,7 +31,7 @@
 
 ### Entry Point: `backend/cmd/server/main.go`
 - Creates Chi router with middleware (CORS, logging, recoverer, session cookies)
-- Registers routes: `POST /api/convert`, `GET /api/health`, `/api/pastas/*` CRUD
+- Registers routes: `POST /api/convert`, `GET /api/health`, `/api/pastas` (list, get, delete, patch)
 - Reads `PORT` from environment (default: 8080)
 - Connects to PostgreSQL via `DATABASE_URL` (graceful degradation if unset/unavailable)
 - Passes `Store` to handlers via functional options

@@ -72,7 +72,7 @@ Copy-Pasta/
 ├── backend/
 │   ├── cmd/server/         # Entry point (serves API + static frontend)
 │   └── internal/
-│       ├── handler/        # HTTP handlers (convert, pasta CRUD)
+│       ├── handler/        # HTTP handlers (convert, pastas management)
 │       ├── converter/      # Image → ASCII/Braille engine
 │       ├── middleware/     # CORS, logging, session cookies
 │       └── store/          # PostgreSQL persistence (pgx/v5)

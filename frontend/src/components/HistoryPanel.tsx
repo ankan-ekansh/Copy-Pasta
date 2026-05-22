@@ -48,9 +48,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
 
   const handleCopyLink = (id: string) => {
     const url = `${window.location.origin}/pasta/${encodeURIComponent(id)}`;
-    navigator.clipboard?.writeText(url).catch(() => {
-      // Clipboard API unavailable or denied — silent fallback
-    });
+    navigator.clipboard?.writeText(url)?.catch(() => {});
   };
 
   if (state.loading) {

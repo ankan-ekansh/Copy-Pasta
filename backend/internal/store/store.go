@@ -29,11 +29,13 @@ type Store interface {
 	// ListBySession returns pastas for a given session, ordered by created_at desc.
 	ListBySession(ctx context.Context, sessionID string, limit, offset int) ([]Pasta, error)
 
-	// Delete removes a pasta. Only the owner (by session) should call this.
-	Delete(ctx context.Context, id string) error
+	// DeleteByOwner removes a pasta only if it belongs to the given session.
+	// Returns ErrNotFound if the pasta doesn't exist or isn't owned by the session.
+	DeleteByOwner(ctx context.Context, id, sessionID string) error
 
-	// SetPublic updates the is_public flag.
-	SetPublic(ctx context.Context, id string, isPublic bool) error
+	// SetPublicByOwner updates the is_public flag only if the pasta belongs to the session.
+	// Returns ErrNotFound if the pasta doesn't exist or isn't owned by the session.
+	SetPublicByOwner(ctx context.Context, id, sessionID string, isPublic bool) error
 
 	// Close releases any resources held by the store.
 	Close()

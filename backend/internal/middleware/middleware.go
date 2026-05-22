@@ -21,13 +21,17 @@ func CORS() func(http.Handler) http.Handler {
 	origins := []string{"http://localhost:3000", "http://localhost:8080"}
 	allowCreds := true
 	if env := os.Getenv("CORS_ORIGINS"); env != "" {
-		origins = strings.Split(env, ",")
-		// Wildcard is incompatible with credentials — disable creds if * is used
-		for _, o := range origins {
-			if strings.TrimSpace(o) == "*" {
-				allowCreds = false
-				break
+		parts := strings.Split(env, ",")
+		origins = make([]string, 0, len(parts))
+		for _, o := range parts {
+			o = strings.TrimSpace(o)
+			if o == "" {
+				continue
 			}
+			if o == "*" {
+				allowCreds = false
+			}
+			origins = append(origins, o)
 		}
 	}
 	return cors.Handler(cors.Options{

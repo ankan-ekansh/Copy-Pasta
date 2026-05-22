@@ -116,8 +116,8 @@ func (s *PostgresStore) ListBySession(ctx context.Context, sessionID string, lim
 	return pastas, rows.Err()
 }
 
-func (s *PostgresStore) Delete(ctx context.Context, id string) error {
-	result, err := s.pool.Exec(ctx, "DELETE FROM pastas WHERE id = $1", id)
+func (s *PostgresStore) DeleteByOwner(ctx context.Context, id, sessionID string) error {
+	result, err := s.pool.Exec(ctx, "DELETE FROM pastas WHERE id = $1 AND session_id = $2", id, sessionID)
 	if err != nil {
 		return err
 	}
@@ -127,8 +127,8 @@ func (s *PostgresStore) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *PostgresStore) SetPublic(ctx context.Context, id string, isPublic bool) error {
-	result, err := s.pool.Exec(ctx, "UPDATE pastas SET is_public = $1 WHERE id = $2", isPublic, id)
+func (s *PostgresStore) SetPublicByOwner(ctx context.Context, id, sessionID string, isPublic bool) error {
+	result, err := s.pool.Exec(ctx, "UPDATE pastas SET is_public = $1 WHERE id = $2 AND session_id = $3", isPublic, id, sessionID)
 	if err != nil {
 		return err
 	}

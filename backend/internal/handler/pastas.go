@@ -110,7 +110,7 @@ func (h *Handler) ListPastas(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, listResponse{Pastas: items})
 }
 
-// DeletePasta handles DELETE /api/pastas/:id — owner only.
+// DeletePasta handles DELETE /api/pastas/:id — owner only (atomic).
 func (h *Handler) DeletePasta(w http.ResponseWriter, r *http.Request) {
 	if h.store == nil {
 		writeError(w, http.StatusServiceUnavailable, "persistence not configured")
@@ -129,22 +129,7 @@ func (h *Handler) DeletePasta(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify ownership
-	pasta, err := h.store.Get(r.Context(), id)
-	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "pasta not found")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal server error")
-		return
-	}
-	if pasta.SessionID != sessionID {
-		writeError(w, http.StatusForbidden, "not your pasta")
-		return
-	}
-
-	if err := h.store.Delete(r.Context(), id); err != nil {
+	if err := h.store.DeleteByOwner(r.Context(), id, sessionID); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "pasta not found")
 			return
@@ -156,7 +141,7 @@ func (h *Handler) DeletePasta(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// SetPublic handles PATCH /api/pastas/:id — toggle is_public (owner only).
+// SetPublic handles PATCH /api/pastas/:id — toggle is_public (owner only, atomic).
 func (h *Handler) SetPublic(w http.ResponseWriter, r *http.Request) {
 	if h.store == nil {
 		writeError(w, http.StatusServiceUnavailable, "persistence not configured")
@@ -175,21 +160,6 @@ func (h *Handler) SetPublic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify ownership
-	pasta, err := h.store.Get(r.Context(), id)
-	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "pasta not found")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal server error")
-		return
-	}
-	if pasta.SessionID != sessionID {
-		writeError(w, http.StatusForbidden, "not your pasta")
-		return
-	}
-
 	var body struct {
 		IsPublic bool `json:"is_public"`
 	}
@@ -198,7 +168,7 @@ func (h *Handler) SetPublic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.SetPublic(r.Context(), id, body.IsPublic); err != nil {
+	if err := h.store.SetPublicByOwner(r.Context(), id, sessionID, body.IsPublic); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "pasta not found")
 			return

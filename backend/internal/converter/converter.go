@@ -132,12 +132,13 @@ func Convert(img image.Image, opts Options) string {
 	if opts.Invert {
 		ramp = reverseString(ramp)
 	}
+	rampRunes := []rune(ramp)
 
 	// Step 7: Map to characters
 	var builder strings.Builder
 	builder.Grow((width + 1) * targetHeight)
 
-	maxIndex := len(ramp) - 1
+	maxIndex := len(rampRunes) - 1
 	for y := 0; y < targetHeight; y++ {
 		for x := 0; x < width; x++ {
 			val := grid[y][x]
@@ -156,7 +157,7 @@ func Convert(img image.Image, opts Options) string {
 			if index < 0 {
 				index = 0
 			}
-			builder.WriteByte(ramp[index])
+			builder.WriteRune(rampRunes[index])
 		}
 		if y < targetHeight-1 {
 			builder.WriteByte('\n')

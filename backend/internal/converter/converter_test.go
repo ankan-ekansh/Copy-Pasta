@@ -61,7 +61,7 @@ func TestConvert_DefaultWidth(t *testing.T) {
 	}
 }
 
-func TestConvert_WidthClamping(t *testing.T) {
+func TestConvert_WidthRespected(t *testing.T) {
 	img := solidImage(200, 200, color.Gray{128})
 	widths := []int{10, 50, 80, 120}
 	for _, w := range widths {
@@ -134,14 +134,31 @@ func TestConvert_AllBlack(t *testing.T) {
 }
 
 func TestConvert_WhiteLighterThanBlack(t *testing.T) {
-	// With a two-char ramp on a half-image, verify both chars appear
+	// Half-image: left=black, right=white. With ramp " @", dark→@ and light→space
 	half := halfImage(200, 200)
 	result := Convert(half, Options{Width: 20, Contrast: 1.0, EdgeMix: 0, CharRamp: " @"})
-	chars := strings.ReplaceAll(result, "\n", "")
-	hasSpace := strings.Contains(chars, " ")
-	hasAt := strings.Contains(chars, "@")
-	if !hasSpace || !hasAt {
-		t.Errorf("expected both ' ' and '@' in half-image output, got: %q", chars[:20])
+	lines := strings.Split(result, "\n")
+	if len(lines) == 0 {
+		t.Fatal("expected non-empty result")
+	}
+	// Check first line: left half should be dense (@), right half should be light (space)
+	line := []rune(lines[0])
+	if len(line) < 20 {
+		t.Fatalf("expected line of 20 runes, got %d", len(line))
+	}
+	// Left quarter (cols 0-4) should be '@' (dark region)
+	for i := 0; i < 5; i++ {
+		if line[i] != '@' {
+			t.Errorf("expected '@' at left col %d, got %c", i, line[i])
+			break
+		}
+	}
+	// Right quarter (cols 15-19) should be ' ' (light region)
+	for i := 15; i < 20; i++ {
+		if line[i] != ' ' {
+			t.Errorf("expected ' ' at right col %d, got %c", i, line[i])
+			break
+		}
 	}
 }
 
@@ -151,6 +168,31 @@ func TestConvert_Invert(t *testing.T) {
 	inverted := Convert(img, Options{Width: 40, Invert: true})
 	if normal == inverted {
 		t.Error("expected inverted output to differ from normal")
+	}
+}
+
+func TestConvert_MultiByteRamp(t *testing.T) {
+	// Verify that multi-byte Unicode ramps (like RampBlocks) work correctly
+	img := halfImage(200, 200)
+	result := Convert(img, Options{Width: 20, Contrast: 1.0, EdgeMix: 0, CharRamp: RampBlocks})
+	lines := strings.Split(result, "\n")
+	if len(lines) == 0 {
+		t.Fatal("expected non-empty result")
+	}
+	// Each line should have exactly 20 runes (not 20 bytes)
+	for i, line := range lines {
+		runes := []rune(line)
+		if len(runes) != 20 {
+			t.Errorf("line %d: expected 20 runes, got %d", i, len(runes))
+			break
+		}
+		// All chars should be from RampBlocks
+		for _, r := range runes {
+			if !strings.ContainsRune(RampBlocks, r) {
+				t.Errorf("line %d: char %U not in RampBlocks", i, r)
+				break
+			}
+		}
 	}
 }
 

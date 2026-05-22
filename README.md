@@ -12,11 +12,14 @@ A fun web app that converts meme images into ASCII art that you can copy-paste a
 - **Braille Unicode mode**: High-resolution conversion using Unicode Braille characters (8 pixels per char)
 - **Floyd-Steinberg dithering**: Simulates grayscale through dot density patterns
 - **Edge detection**: Sobel operator preserves outlines at narrow widths
+- **Persistence**: Conversions auto-saved to PostgreSQL with shareable links
+- **Session-based ownership**: Anonymous cookie-based sessions, no login required
+- **REST API**: Full CRUD for pastas (create, list, view, delete, publish)
 - **Mobile share presets**: One-tap widths for WhatsApp, iMessage, Twitter, Telegram, Discord, Reddit
 - **Dark/light theme**: Toggle with system preference detection and localStorage persistence
 - **Configurable output**: Width slider, invert, A/B mode toggle (ASCII vs Braille)
 - **One-click copy**: Copy your ASCII masterpiece to clipboard instantly
-- **Fast**: Server-side Go conversion is blazing fast
+- **Graceful degradation**: App works without DB — persistence is best-effort
 
 ## 🏗️ Tech Stack
 
@@ -24,15 +27,15 @@ A fun web app that converts meme images into ASCII art that you can copy-paste a
 |-------|-----------|
 | Backend | Go + Chi router |
 | Frontend | React + TypeScript + Vite |
-| Database | Azure Database for PostgreSQL (Phase 3, planned) |
-| Infra | Azure Container Apps (prod), Docker (local builds) |
+| Database | PostgreSQL (via pgx/v5 connection pool) |
+| Infra | Azure Container Apps (prod), Docker Compose (local) |
 | CI/CD | GitHub Actions (test on PR, deploy on merge to main) |
 | ASCII Engine | Go `image` + `golang.org/x/image` |
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Go 1.22+
+- Go 1.25+
 - Node.js 20+
 - Docker & Docker Compose (optional)
 
@@ -50,7 +53,10 @@ make dev-frontend  # Vite dev server on :5173 (proxies /api to :8080)
 ### Docker
 
 ```bash
-# Single unified container (same as production)
+# Full stack with PostgreSQL (recommended for testing persistence)
+docker compose up
+
+# Single unified container (same as production, no DB)
 docker build -t copy-pasta .
 docker run -p 8080:8080 copy-pasta
 ```
@@ -64,9 +70,10 @@ Copy-Pasta/
 ├── backend/
 │   ├── cmd/server/         # Entry point (serves API + static frontend)
 │   └── internal/
-│       ├── handler/        # HTTP handlers
+│       ├── handler/        # HTTP handlers (convert, pasta CRUD)
 │       ├── converter/      # Image → ASCII/Braille engine
-│       └── middleware/     # CORS, logging
+│       ├── middleware/     # CORS, logging, session cookies
+│       └── store/          # PostgreSQL persistence (pgx/v5)
 ├── frontend/
 │   ├── src/
 │   │   ├── components/     # React components (ImageUploader, AsciiOutput, ThemeToggle)
@@ -82,7 +89,8 @@ Copy-Pasta/
 │   ├── IMPLEMENTATION.md   # Architecture & API reference
 │   └── DEPLOYMENT.md       # Azure deployment guide
 ├── Dockerfile              # Multi-stage: Node build → Go build → Alpine runtime
-├── docker-compose.yml      # Multi-container setup (legacy, use `make dev` instead)
+├── docker-compose.yml      # Full stack: Go + React + PostgreSQL
+├── .env.example            # Local env var template
 ├── Makefile
 ├── CONTRIBUTING.md         # Branch/PR workflow rules
 └── README.md
@@ -93,7 +101,7 @@ Copy-Pasta/
 - [x] **Phase 1**: Foundation — end-to-end image → ASCII flow
 - [x] **Phase 2**: Polish — paste, drag-drop, braille mode, dithering, presets, dark/light theme
 - [x] **Phase 2.5**: Deploy — Azure Container Apps, CI/CD, GitHub Actions
-- [ ] **Phase 3**: Persistence — PostgreSQL, history, shareable URLs
+- [x] **Phase 3**: Persistence — PostgreSQL, session cookies, shareable URLs, CRUD API *(backend complete, frontend TBD)*
 - [ ] **Phase 4**: Observability — logging, tracing, metrics
 - [ ] **Phase 5**: Social — gallery, likes, leaderboard
 - [ ] **Phase 6**: Production hardening — rate limiting, scaling, CDN

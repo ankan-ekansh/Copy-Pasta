@@ -115,7 +115,7 @@ See **[TESTING.md](TESTING.md)** for the full testing plan.
 ---
 
 ## Phase 3: Persistence — "Remember the Pastas"
-**Status**: Planned  
+**Status**: Backend Complete (frontend integration pending)  
 **Goal**: Save conversions so users can revisit, share, and (later) browse others' art.
 
 ### Design Decisions
@@ -146,37 +146,38 @@ CREATE INDEX idx_pastas_public ON pastas(is_public, created_at);
 
 ### Implementation Steps (gradual)
 
-#### Step 1: Database layer
-- Provision Azure Database for PostgreSQL Flexible Server (B1ms, 32GB)
+#### Step 1: Database layer ✅
+- ~~Provision Azure Database for PostgreSQL Flexible Server (B1ms, 32GB)~~ (deferred to deploy time)
 - Add `pgx` driver (Go PostgreSQL driver)
 - Create `internal/store` package with `Store` interface
 - Run migration on startup (create table if not exists)
 - Wire into server startup via `DATABASE_URL` env var
+- PostgreSQL 16 in docker-compose for local dev
 
-#### Step 2: Session cookie middleware
+#### Step 2: Session cookie middleware ✅
 - Middleware checks for `copy-pasta-session` cookie
-- If missing, generate UUID and set cookie (HttpOnly, Secure, SameSite=Lax, Path=/, 1 year expiry)
+- If missing, generate UUID and set cookie (HttpOnly, Secure via X-Forwarded-Proto, SameSite=Lax, Path=/, 1 year expiry)
 - Attach session ID to request context
 
-#### Step 3: Save on convert
-- After successful conversion, auto-save to DB
+#### Step 3: Save on convert ✅
+- After successful conversion, auto-save to DB (best-effort, doesn't fail request)
 - Return `id` in the API response alongside existing fields
 - No behavior change for users — conversion still works the same
 
-#### Step 4: View shared pasta
+#### Step 4: View shared pasta ✅
 - `GET /api/pastas/:id` — returns pasta by ID
 - **Visibility model**: all pastas are "unlisted but shareable" — anyone with the link can view regardless of `is_public`. The `is_public` flag only controls whether the pasta appears in the Phase 5 gallery/browse feed.
-- Frontend route `/pasta/:id` — renders the shared art (read-only view)
-- OG meta tags for link previews (stretch)
+- Frontend route `/pasta/:id` — renders the shared art (read-only view) ⬜
+- OG meta tags for link previews (stretch) ⬜
 
-#### Step 5: My History
-- `GET /api/pastas` — returns pastas for current session (cookie-based)
-- Frontend "My Pastas" page — list of recent conversions
-- Hard-delete only (no soft-delete complexity; deleted = gone from DB)
+#### Step 5: My History ✅
+- `GET /api/pastas` — returns pastas for current session (cookie-based, paginated)
+- `DELETE /api/pastas/:id` — atomic ownership check (session_id in WHERE)
+- Frontend "My Pastas" page — list of recent conversions ⬜
 
-#### Step 6: Publish toggle
-- `PATCH /api/pastas/:id` — toggle `is_public` (session-owner only)
-- "Publish to gallery" button in UI
+#### Step 6: Publish toggle ✅
+- `PATCH /api/pastas/:id` — atomic ownership check (session_id in WHERE)
+- "Publish to gallery" button in UI ⬜
 - Prepares data for Phase 5 gallery
 
 ### API Changes

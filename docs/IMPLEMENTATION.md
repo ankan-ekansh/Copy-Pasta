@@ -247,21 +247,23 @@ Convert an image to ASCII art.
 ### `GET /api/pastas`
 List current user's pastas (session-based).
 
-**Query params**: `limit` (default 50), `offset` (default 0)
+**Query params**: `limit` (default 20), `offset` (default 0)
 
 **Response**: `200 OK`
 ```json
-[
-  {
-    "id": "aBcDeFgHiJ",
-    "ascii": "...",
-    "width": 150,
-    "height": 45,
-    "mode": "ascii",
-    "is_public": false,
-    "created_at": "2024-01-15T10:30:00Z"
-  }
-]
+{
+  "pastas": [
+    {
+      "id": "aBcDeFgHiJ",
+      "ascii_art": "...",
+      "width": 150,
+      "height": 45,
+      "mode": "ascii",
+      "is_public": false,
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
 ```
 
 **Errors**: `503 Service Unavailable` (persistence disabled)

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getPasta, type Pasta } from '../api/pastas';
 import { ThemeToggle } from './ThemeToggle';
@@ -9,6 +9,11 @@ export function PastaView() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -20,9 +25,13 @@ export function PastaView() {
 
   const handleCopy = async () => {
     if (!pasta) return;
-    await navigator.clipboard.writeText(pasta.ascii_art);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(pasta.ascii_art);
+      setCopied(true);
+      timerRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard API unavailable or denied
+    }
   };
 
   if (loading) {
@@ -72,21 +81,21 @@ export function PastaView() {
 
       <main className="app-grid">
         <div className="output-column" style={{ gridColumn: '1 / -1' }}>
-          <section className="output-card">
-            <div className="output-toolbar">
-              <span className="output-meta">
+          <section className="ascii-card">
+            <div className="ascii-header">
+              <span>
                 {pasta.width}×{pasta.height} • Created {new Date(pasta.created_at).toLocaleDateString()}
               </span>
-              <div className="output-actions">
-                <button type="button" className="copy-button" onClick={handleCopy}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="button" className="secondary-button" onClick={handleCopy}>
                   {copied ? '✅ Copied!' : '📋 Copy'}
                 </button>
-                <Link to="/" className="copy-button" style={{ textDecoration: 'none' }}>
+                <Link to="/" className="secondary-button" style={{ textDecoration: 'none' }}>
                   🍝 Make your own
                 </Link>
               </div>
             </div>
-            <pre className="ascii-pre">{pasta.ascii_art}</pre>
+            <pre className="ascii-output">{pasta.ascii_art}</pre>
           </section>
         </div>
       </main>

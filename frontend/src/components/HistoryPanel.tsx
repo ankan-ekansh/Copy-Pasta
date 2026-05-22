@@ -1,4 +1,5 @@
 import { useState, useEffect, useReducer } from 'react';
+import { Link } from 'react-router-dom';
 import { listPastas, deletePasta, type Pasta } from '../api/pastas';
 
 interface HistoryPanelProps {
@@ -43,7 +44,9 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
 
   const handleCopyLink = (id: string) => {
     const url = `${window.location.origin}/pasta/${id}`;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(url).catch(() => {
+      // Clipboard API unavailable or denied — silent fallback
+    });
   };
 
   if (state.loading) {
@@ -95,13 +98,13 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
               >
                 🔗
               </button>
-              <a
-                href={`/pasta/${pasta.id}`}
+              <Link
+                to={`/pasta/${pasta.id}`}
                 className="history-btn"
                 title="View"
               >
                 👁️
-              </a>
+              </Link>
               <button
                 type="button"
                 className="history-btn history-btn-danger"

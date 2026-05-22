@@ -219,8 +219,8 @@ function App() {
                     />
                     <button
                       type="button"
-                      className="copy-button"
-                      onClick={() => navigator.clipboard.writeText(`${window.location.origin}/pasta/${result.id}`)}
+                      className="secondary-button"
+                      onClick={() => navigator.clipboard.writeText(`${window.location.origin}/pasta/${result.id}`).catch(() => {})}
                     >
                       📋 Copy link
                     </button>

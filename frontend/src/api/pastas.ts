@@ -1,9 +1,11 @@
+import { type ConvertMode } from './convert';
+
 export interface Pasta {
   id: string;
   ascii_art: string;
   width: number;
   height: number;
-  mode: string;
+  mode: ConvertMode;
   is_public: boolean;
   created_at: string;
 }
@@ -46,7 +48,7 @@ export async function deletePasta(id: string): Promise<void> {
     credentials: 'include',
   });
 
-  if (!response.ok && response.status !== 204) {
+  if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Delete failed' }));
     throw new Error(error.error || 'Delete failed');
   }

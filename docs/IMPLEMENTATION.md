@@ -21,8 +21,7 @@
                                │ DATABASE_URL
                                ▼
                       ┌──────────────────┐
-                      │   PostgreSQL     │
-                      │   (pgx/v5 pool) │
+                      │   PostgreSQL 16  │
                       └──────────────────┘
 ```
 

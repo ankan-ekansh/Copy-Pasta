@@ -8,12 +8,14 @@ interface HistoryPanelProps {
 
 type State = { pastas: Pasta[]; loading: boolean; error: string };
 type Action =
+  | { type: 'fetch' }
   | { type: 'loaded'; pastas: Pasta[] }
   | { type: 'error'; message: string }
   | { type: 'remove'; id: string };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
+    case 'fetch': return { ...state, loading: true, error: '' };
     case 'loaded': return { pastas: action.pastas, loading: false, error: '' };
     case 'error': return { ...state, loading: false, error: action.message };
     case 'remove': return { ...state, pastas: state.pastas.filter((p) => p.id !== action.id) };
@@ -27,6 +29,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
 
   useEffect(() => {
     let cancelled = false;
+    dispatch({ type: 'fetch' });
     listPastas(10)
       .then((items) => { if (!cancelled) dispatch({ type: 'loaded', pastas: items }); })
       .catch((err) => { if (!cancelled) dispatch({ type: 'error', message: err instanceof Error ? err.message : 'Failed to load' }); });

@@ -167,7 +167,8 @@ fi
 
 # Ensure firewall is hardened (idempotent)
 echo "   Ensuring firewall is hardened (Azure-only access)..."
-# Remove any rule that isn't the exact AllowAzureServices (0.0.0.0–0.0.0.0)
+# Remove any rule whose IP range isn't exactly 0.0.0.0–0.0.0.0
+# (This keeps any rule with that exact range, regardless of name)
 UNWANTED_RULES=$(az postgres flexible-server firewall-rule list \
   --resource-group "$RESOURCE_GROUP" \
   --name "$PG_SERVER_NAME" \
@@ -227,7 +228,17 @@ if [ -n "${PG_ADMIN_PASSWORD:-}" ]; then
     --set-env-vars "DATABASE_URL=secretref:database-url" \
     --output none
 else
-  echo "⏭️  PG_ADMIN_PASSWORD not set — skipping DATABASE_URL update (already configured)."
+  # Verify the secret actually exists when skipping password setup
+  SECRET_EXISTS=$(az containerapp secret list \
+    --name "$CONTAINER_APP_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --query "[?name=='database-url'] | length(@)" -o tsv 2>/dev/null || echo "0")
+  if [ "$SECRET_EXISTS" = "0" ]; then
+    echo "⚠️  WARNING: PG_ADMIN_PASSWORD not set and 'database-url' secret is missing!"
+    echo "   Set PG_ADMIN_PASSWORD and re-run to configure the database connection."
+  else
+    echo "⏭️  PG_ADMIN_PASSWORD not set — DATABASE_URL secret already configured."
+  fi
 fi
 
 echo ""

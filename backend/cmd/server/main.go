@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ankan/copy-pasta/internal/handler"
-	appmiddleware "github.com/ankan/copy-pasta/internal/middleware"
+	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/handler"
+	appmiddleware "github.com/ankan-ekansh/Copy-Pasta/backend/internal/middleware"
 	"github.com/go-chi/chi/v5"
 )
 

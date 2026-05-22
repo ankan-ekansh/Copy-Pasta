@@ -30,7 +30,7 @@ func Session(next http.Handler) http.Handler {
 				Path:     "/",
 				MaxAge:   365 * 24 * 60 * 60, // 1 year
 				HttpOnly: true,
-				Secure:   true,
+				Secure:   r.TLS != nil,
 				SameSite: http.SameSiteLaxMode,
 			})
 		}

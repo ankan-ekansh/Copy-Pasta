@@ -20,7 +20,7 @@ type Pasta struct {
 
 // Store defines the persistence interface for pastas.
 type Store interface {
-	// Save persists a new pasta and returns its ID.
+	// Save persists a new pasta. The caller must set p.ID before calling.
 	Save(ctx context.Context, p *Pasta) error
 
 	// Get retrieves a pasta by ID. Returns ErrNotFound if it doesn't exist.

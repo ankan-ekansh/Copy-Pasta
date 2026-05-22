@@ -142,6 +142,10 @@ func (h *Handler) DeletePasta(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.store.Delete(r.Context(), id); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "pasta not found")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
@@ -192,6 +196,10 @@ func (h *Handler) SetPublic(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.store.SetPublic(r.Context(), id, body.IsPublic); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "pasta not found")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}

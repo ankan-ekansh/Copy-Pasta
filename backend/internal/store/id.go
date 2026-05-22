@@ -15,7 +15,10 @@ func GenerateID() string {
 	b := make([]byte, idLength)
 	max := big.NewInt(int64(len(idAlphabet)))
 	for i := range b {
-		n, _ := rand.Int(rand.Reader, max)
+		n, err := rand.Int(rand.Reader, max)
+		if err != nil {
+			panic("crypto/rand failed: " + err.Error())
+		}
 		b[i] = idAlphabet[n.Int64()]
 	}
 	return string(b)

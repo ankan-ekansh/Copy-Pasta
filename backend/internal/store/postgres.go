@@ -43,8 +43,8 @@ func (s *PostgresStore) migrate(ctx context.Context) error {
 			width INT NOT NULL,
 			height INT NOT NULL,
 			mode TEXT NOT NULL,
-			is_public BOOLEAN DEFAULT FALSE,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			is_public BOOLEAN NOT NULL DEFAULT FALSE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);
 		CREATE INDEX IF NOT EXISTS idx_pastas_session ON pastas(session_id);
 		CREATE INDEX IF NOT EXISTS idx_pastas_public ON pastas(is_public, created_at);
@@ -55,11 +55,11 @@ func (s *PostgresStore) migrate(ctx context.Context) error {
 
 func (s *PostgresStore) Save(ctx context.Context, p *Pasta) error {
 	query := `
-		INSERT INTO pastas (id, session_id, ascii_art, width, height, mode, is_public, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO pastas (id, session_id, ascii_art, width, height, mode, is_public)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING created_at
 	`
-	_, err := s.pool.Exec(ctx, query, p.ID, p.SessionID, p.ASCIIArt, p.Width, p.Height, p.Mode, p.IsPublic, p.CreatedAt)
-	return err
+	return s.pool.QueryRow(ctx, query, p.ID, p.SessionID, p.ASCIIArt, p.Width, p.Height, p.Mode, p.IsPublic).Scan(&p.CreatedAt)
 }
 
 func (s *PostgresStore) Get(ctx context.Context, id string) (*Pasta, error) {

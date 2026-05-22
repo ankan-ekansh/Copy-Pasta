@@ -18,7 +18,7 @@ func Register(r chi.Router) {
 }
 
 func CORS() func(http.Handler) http.Handler {
-	origins := []string{"*"}
+	origins := []string{"http://localhost:3000", "http://localhost:8080"}
 	if env := os.Getenv("CORS_ORIGINS"); env != "" {
 		origins = strings.Split(env, ",")
 	}

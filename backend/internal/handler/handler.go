@@ -10,15 +10,28 @@ import (
 	"strings"
 
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/converter"
+	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/store"
 
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
 )
 
-type Handler struct{}
+type Handler struct {
+	store store.Store
+}
+
+type Option func(*Handler)
+
+// WithStore configures the handler with a persistence store.
+func WithStore(s store.Store) Option {
+	return func(h *Handler) {
+		h.store = s
+	}
+}
 
 type convertResponse struct {
+	ID     string `json:"id,omitempty"`
 	ASCII  string `json:"ascii"`
 	Width  int    `json:"width"`
 	Height int    `json:"height"`
@@ -32,8 +45,12 @@ type errorResponse struct {
 	Error string `json:"error"`
 }
 
-func New() *Handler {
-	return &Handler{}
+func New(opts ...Option) *Handler {
+	h := &Handler{}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
 }
 
 func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"io/fs"
 	"log"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/handler"
 	appmiddleware "github.com/ankan-ekansh/Copy-Pasta/backend/internal/middleware"
+	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/store"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -16,7 +18,21 @@ func main() {
 	r := chi.NewRouter()
 	appmiddleware.Register(r)
 
-	h := handler.New()
+	// Connect to database if DATABASE_URL is set
+	var s store.Store
+	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
+		var err error
+		s, err = store.NewPostgres(context.Background(), dbURL)
+		if err != nil {
+			log.Fatalf("failed to connect to database: %v", err)
+		}
+		defer s.Close()
+		log.Println("connected to database")
+	} else {
+		log.Println("DATABASE_URL not set, persistence disabled")
+	}
+
+	h := handler.New(handler.WithStore(s))
 	r.Get("/api/health", h.Health)
 	r.Post("/api/convert", h.Convert)
 

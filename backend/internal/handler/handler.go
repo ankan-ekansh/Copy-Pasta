@@ -5,20 +5,35 @@ import (
 	"errors"
 	"image"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/converter"
+	appmiddleware "github.com/ankan-ekansh/Copy-Pasta/backend/internal/middleware"
+	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/store"
 
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
 )
 
-type Handler struct{}
+type Handler struct {
+	store store.Store
+}
+
+type Option func(*Handler)
+
+// WithStore configures the handler with a persistence store.
+func WithStore(s store.Store) Option {
+	return func(h *Handler) {
+		h.store = s
+	}
+}
 
 type convertResponse struct {
+	ID     string `json:"id,omitempty"`
 	ASCII  string `json:"ascii"`
 	Width  int    `json:"width"`
 	Height int    `json:"height"`
@@ -32,8 +47,12 @@ type errorResponse struct {
 	Error string `json:"error"`
 }
 
-func New() *Handler {
-	return &Handler{}
+func New(opts ...Option) *Handler {
+	h := &Handler{}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
 }
 
 func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {
@@ -230,7 +249,32 @@ func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {
 		height = strings.Count(trimmed, "\n") + 1
 	}
 
+	// Persist to database if store is configured
+	var pastaID string
+	if h.store != nil {
+		sessionID := appmiddleware.GetSessionID(r.Context())
+		id, idErr := store.GenerateID()
+		if idErr != nil {
+			log.Printf("failed to generate pasta ID: %v", idErr)
+		} else {
+			pasta := &store.Pasta{
+				ID:        id,
+				SessionID: sessionID,
+				ASCIIArt:  ascii,
+				Width:     width,
+				Height:    height,
+				Mode:      mode,
+			}
+			if err := h.store.Save(r.Context(), pasta); err != nil {
+				log.Printf("failed to save pasta: %v", err)
+			} else {
+				pastaID = pasta.ID
+			}
+		}
+	}
+
 	writeJSON(w, http.StatusOK, convertResponse{
+		ID:     pastaID,
 		ASCII:  ascii,
 		Width:  width,
 		Height: height,
@@ -257,4 +301,8 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 
 func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, errorResponse{Error: message})
+}
+
+func decodeJSON(r *http.Request, v any) error {
+	return json.NewDecoder(io.LimitReader(r.Body, 1024)).Decode(v)
 }

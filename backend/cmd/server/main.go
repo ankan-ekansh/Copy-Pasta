@@ -1,14 +1,17 @@
 package main
 
 import (
+	"context"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/handler"
 	appmiddleware "github.com/ankan-ekansh/Copy-Pasta/backend/internal/middleware"
+	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/store"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -16,9 +19,30 @@ func main() {
 	r := chi.NewRouter()
 	appmiddleware.Register(r)
 
-	h := handler.New()
+	// Connect to database if DATABASE_URL is set
+	var s store.Store
+	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		var err error
+		s, err = store.NewPostgres(ctx, dbURL)
+		if err != nil {
+			log.Printf("WARNING: failed to connect to database: %v — persistence disabled", err)
+		} else {
+			defer s.Close()
+			log.Println("connected to database")
+		}
+	} else {
+		log.Println("DATABASE_URL not set, persistence disabled")
+	}
+
+	h := handler.New(handler.WithStore(s))
 	r.Get("/api/health", h.Health)
 	r.Post("/api/convert", h.Convert)
+	r.Get("/api/pastas", h.ListPastas)
+	r.Get("/api/pastas/{id}", h.GetPasta)
+	r.Delete("/api/pastas/{id}", h.DeletePasta)
+	r.Patch("/api/pastas/{id}", h.SetPublic)
 
 	// Serve static frontend files if the directory exists (production mode)
 	staticDir := os.Getenv("STATIC_DIR")

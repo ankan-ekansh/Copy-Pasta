@@ -1,0 +1,181 @@
+package handler
+
+import (
+	"errors"
+	"net/http"
+	"strconv"
+	"time"
+
+	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/store"
+	"github.com/go-chi/chi/v5"
+
+	appmiddleware "github.com/ankan-ekansh/Copy-Pasta/backend/internal/middleware"
+)
+
+type pastaResponse struct {
+	ID        string `json:"id"`
+	ASCIIArt  string `json:"ascii_art"`
+	Width     int    `json:"width"`
+	Height    int    `json:"height"`
+	Mode      string `json:"mode"`
+	IsPublic  bool   `json:"is_public"`
+	CreatedAt string `json:"created_at"`
+}
+
+type listResponse struct {
+	Pastas []pastaResponse `json:"pastas"`
+}
+
+// GetPasta handles GET /api/pastas/:id — anyone with the link can view.
+// Design: "unlisted but shareable" — is_public only controls gallery visibility (Phase 5),
+// not access. Similar to Google Docs "anyone with the link" sharing model.
+func (h *Handler) GetPasta(w http.ResponseWriter, r *http.Request) {
+	if h.store == nil {
+		writeError(w, http.StatusServiceUnavailable, "persistence not configured")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "pasta ID is required")
+		return
+	}
+
+	pasta, err := h.store.Get(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "pasta not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, pastaResponse{
+		ID:        pasta.ID,
+		ASCIIArt:  pasta.ASCIIArt,
+		Width:     pasta.Width,
+		Height:    pasta.Height,
+		Mode:      pasta.Mode,
+		IsPublic:  pasta.IsPublic,
+		CreatedAt: pasta.CreatedAt.UTC().Format(time.RFC3339),
+	})
+}
+
+// ListPastas handles GET /api/pastas — returns pastas for the current session.
+func (h *Handler) ListPastas(w http.ResponseWriter, r *http.Request) {
+	if h.store == nil {
+		writeError(w, http.StatusServiceUnavailable, "persistence not configured")
+		return
+	}
+
+	sessionID := appmiddleware.GetSessionID(r.Context())
+	if sessionID == "" {
+		writeError(w, http.StatusUnauthorized, "session required")
+		return
+	}
+
+	limit := 20
+	offset := 0
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	if v := r.URL.Query().Get("offset"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
+
+	pastas, err := h.store.ListBySession(r.Context(), sessionID, limit, offset)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	items := make([]pastaResponse, 0, len(pastas))
+	for _, p := range pastas {
+		items = append(items, pastaResponse{
+			ID:        p.ID,
+			ASCIIArt:  p.ASCIIArt,
+			Width:     p.Width,
+			Height:    p.Height,
+			Mode:      p.Mode,
+			IsPublic:  p.IsPublic,
+			CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339),
+		})
+	}
+
+	writeJSON(w, http.StatusOK, listResponse{Pastas: items})
+}
+
+// DeletePasta handles DELETE /api/pastas/:id — owner only (atomic).
+func (h *Handler) DeletePasta(w http.ResponseWriter, r *http.Request) {
+	if h.store == nil {
+		writeError(w, http.StatusServiceUnavailable, "persistence not configured")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "pasta ID is required")
+		return
+	}
+
+	sessionID := appmiddleware.GetSessionID(r.Context())
+	if sessionID == "" {
+		writeError(w, http.StatusUnauthorized, "session required")
+		return
+	}
+
+	if err := h.store.DeleteByOwner(r.Context(), id, sessionID); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "pasta not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// SetPublic handles PATCH /api/pastas/:id — toggle is_public (owner only, atomic).
+func (h *Handler) SetPublic(w http.ResponseWriter, r *http.Request) {
+	if h.store == nil {
+		writeError(w, http.StatusServiceUnavailable, "persistence not configured")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "pasta ID is required")
+		return
+	}
+
+	sessionID := appmiddleware.GetSessionID(r.Context())
+	if sessionID == "" {
+		writeError(w, http.StatusUnauthorized, "session required")
+		return
+	}
+
+	var body struct {
+		IsPublic bool `json:"is_public"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	if err := h.store.SetPublicByOwner(r.Context(), id, sessionID, body.IsPublic); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "pasta not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]bool{"is_public": body.IsPublic})
+}

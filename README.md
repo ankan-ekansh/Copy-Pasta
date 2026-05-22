@@ -13,8 +13,10 @@ A fun web app that converts meme images into ASCII art that you can copy-paste a
 - **Floyd-Steinberg dithering**: Simulates grayscale through dot density patterns
 - **Edge detection**: Sobel operator preserves outlines at narrow widths
 - **Persistence**: Conversions auto-saved to PostgreSQL with shareable links
+- **Share page**: View any pasta via `/pasta/:id` — read-only, copyable
+- **History panel**: Recent conversions with share link, view, and delete actions
 - **Session-based ownership**: Anonymous cookie-based sessions, no login required
-- **REST API**: Full CRUD for pastas (create, list, view, delete, publish)
+- **REST API**: Manage pastas (list, view, delete, publish) with auto-save on convert
 - **Mobile share presets**: One-tap widths for WhatsApp, iMessage, Twitter, Telegram, Discord, Reddit
 - **Dark/light theme**: Toggle with system preference detection and localStorage persistence
 - **Configurable output**: Width slider, invert, A/B mode toggle (ASCII vs Braille)
@@ -70,14 +72,14 @@ Copy-Pasta/
 ├── backend/
 │   ├── cmd/server/         # Entry point (serves API + static frontend)
 │   └── internal/
-│       ├── handler/        # HTTP handlers (convert, pasta CRUD)
+│       ├── handler/        # HTTP handlers (convert, pastas management)
 │       ├── converter/      # Image → ASCII/Braille engine
 │       ├── middleware/     # CORS, logging, session cookies
 │       └── store/          # PostgreSQL persistence (pgx/v5)
 ├── frontend/
 │   ├── src/
-│   │   ├── components/     # React components (ImageUploader, AsciiOutput, ThemeToggle)
-│   │   ├── api/            # API client
+│   │   ├── components/     # React components (ImageUploader, AsciiOutput, HistoryPanel, PastaView, ThemeToggle)
+│   │   ├── api/            # API clients (convert, pastas)
 │   │   └── App.tsx         # Main app with controls, presets, mode toggle
 │   └── index.html
 ├── infra/
@@ -101,7 +103,7 @@ Copy-Pasta/
 - [x] **Phase 1**: Foundation — end-to-end image → ASCII flow
 - [x] **Phase 2**: Polish — paste, drag-drop, braille mode, dithering, presets, dark/light theme
 - [x] **Phase 2.5**: Deploy — Azure Container Apps, CI/CD, GitHub Actions
-- [x] **Phase 3**: Persistence — PostgreSQL, session cookies, shareable URLs, CRUD API *(backend complete, frontend TBD)*
+- [x] **Phase 3**: Persistence — PostgreSQL, session cookies, shareable URLs, history panel, share page
 - [ ] **Phase 4**: Observability — logging, tracing, metrics
 - [ ] **Phase 5**: Social — gallery, likes, leaderboard
 - [ ] **Phase 6**: Production hardening — rate limiting, scaling, CDN

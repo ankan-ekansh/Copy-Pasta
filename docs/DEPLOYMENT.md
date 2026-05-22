@@ -13,6 +13,7 @@ Single container running on **Azure Container Apps**:
 - [Azure CLI](https://docs.microsoft.com/cli/azure/install-azure-cli) installed
 - Logged in: `az login`
 - Docker installed and running
+- OpenSSL (for password generation)
 
 ### 1. Create Azure Resources
 

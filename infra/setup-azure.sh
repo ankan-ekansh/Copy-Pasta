@@ -5,7 +5,11 @@
 #
 # Prerequisites:
 #   - Azure CLI installed and logged in (az login)
+#   - OpenSSL (for password generation: openssl rand -hex 20)
 #   - A subscription with credits available
+#
+# Note: This script is idempotent but does NOT migrate existing resources to a
+# new region. To change regions, delete the resource group and re-run.
 #
 # Usage:
 #   chmod +x infra/setup-azure.sh

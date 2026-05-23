@@ -272,15 +272,14 @@ GRAFANA_IMAGE="$ACR_LOGIN_SERVER/grafana-copy-pasta:$IMAGE_TAG"
 echo ""
 echo "📊 Setting up observability stack..."
 
-# Ensure the main app exposes /metrics for Prometheus to scrape.
-# NOTE: On Azure with external ingress, /metrics is publicly reachable.
-# This is acceptable for this project (metrics contain only operational counters).
-# For production-sensitive deployments, add bearer token auth to the metrics endpoint.
+# Ensure the main app exposes /metrics for Prometheus to scrape (token-protected).
+# METRICS_TOKEN prevents public access to /metrics on externally-ingressed apps.
 echo "  Enabling metrics endpoint on main app..."
+METRICS_TOKEN=$(openssl rand -hex 16)
 az containerapp update \
   --name "$CONTAINER_APP_NAME" \
   --resource-group "$RESOURCE_GROUP" \
-  --set-env-vars "EXPOSE_METRICS=true" \
+  --set-env-vars "EXPOSE_METRICS=true" "METRICS_TOKEN=$METRICS_TOKEN" \
   --output none
 
 # Create Azure Files share for Prometheus data persistence
@@ -334,6 +333,7 @@ if az containerapp show --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GRO
     --name "$PROMETHEUS_APP" \
     --resource-group "$RESOURCE_GROUP" \
     --image "$PROMETHEUS_IMAGE" \
+    --set-env-vars "METRICS_TOKEN=$METRICS_TOKEN" \
     --output none
 else
   echo "  📈 Creating Prometheus Container App (internal only)..."
@@ -350,6 +350,7 @@ else
     --registry-server "$ACR_LOGIN_SERVER" \
     --registry-username "$ACR_USERNAME" \
     --registry-password "$ACR_PASSWORD" \
+    --env-vars "METRICS_TOKEN=$METRICS_TOKEN" \
     --output none
 fi
 

@@ -5,5 +5,7 @@ global:
 scrape_configs:
   - job_name: 'copy-pasta'
     scrape_interval: 15s
+    authorization:
+      credentials_file: /etc/prometheus/metrics-token
     static_configs:
       - targets: ['copy-pasta:8080']

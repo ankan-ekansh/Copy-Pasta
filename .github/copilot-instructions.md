@@ -48,7 +48,8 @@ Copy-Pasta is a Go (backend) + React (frontend) web app that converts meme image
 - **Resolving PR review comments:**
   1. Push the code fix
   2. Reply to each comment on GitHub explaining what was changed and why
-  3. Both steps are required — a fix without a reply leaves reviewers guessing
+  3. Resolve the conversation thread
+  4. All three steps are required — a fix without a reply/resolve leaves reviewers guessing
 
 ---
 

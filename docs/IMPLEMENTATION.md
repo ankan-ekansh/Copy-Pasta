@@ -31,7 +31,7 @@
 
 ### Entry Point: `backend/cmd/server/main.go`
 - Creates Chi router with middleware (CORS, logging, recoverer, session cookies)
-- Registers routes: `POST /api/convert`, `GET /api/health`, `/api/pastas` (list, get, delete, patch)
+- Registers routes: `POST /api/convert`, `GET /api/health`, `GET /api/gallery`, `/api/pastas` (list, get, delete, patch, like, unlike)
 - Reads `PORT` from environment (default: 8080)
 - Connects to PostgreSQL via `DATABASE_URL` (graceful degradation if unset/unavailable)
 - Passes `Store` to handlers via functional options
@@ -108,13 +108,18 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 - Decodes JPEG/PNG/GIF, routes to appropriate converter, returns JSON response
 - Auto-saves to DB on successful conversion (best-effort, never fails the request)
 - Returns `id` field in response when persistence is available
-- `GET /api/health`: Returns `{"status": "ok"}`
+- `GET /api/health`: Rich health check (status/version/uptime/checks); returns 503 when degraded
 
 ### Handler: `backend/internal/handler/pastas.go`
 - `GET /api/pastas` — list pastas for current session (paginated via limit/offset)
 - `GET /api/pastas/:id` — view any pasta by ID (unlisted-but-shareable)
 - `DELETE /api/pastas/:id` — delete pasta (atomic ownership check)
 - `PATCH /api/pastas/:id` — set is_public (atomic ownership check)
+
+### Handler: `backend/internal/handler/gallery.go`
+- `GET /api/gallery` — public gallery listing (paginated, includes like counts and `liked_by_me`)
+- `POST /api/pastas/:id/like` — like a public pasta (idempotent, checks is_public at statement level)
+- `DELETE /api/pastas/:id/like` — unlike a pasta (checks IsPublicPasta first)
 
 ### Middleware: `backend/internal/middleware/middleware.go`
 Global middleware chain (in order):
@@ -153,13 +158,21 @@ Global middleware chain (in order):
 - Exposes `Ping()` via type assertion on inner store (returns `ErrPingNotSupported` if inner lacks it)
 
 ### Store: `backend/internal/store/`
-- `Store` interface: `Save`, `Get`, `ListBySession`, `DeleteByOwner`, `SetPublicByOwner`, `Close`
+- `Store` interface: `Save`, `Get`, `ListBySession`, `ListPublic`, `DeleteByOwner`, `SetPublicByOwner`, `LikePasta`, `UnlikePasta`, `GetLikeCount`, `IsPublicPasta`, `Close`
 - `PostgresStore` implementation using `pgxpool` (connection pool)
 - Runs migration on startup (CREATE TABLE IF NOT EXISTS, separate statements for pgx compatibility)
 - Connection via `DATABASE_URL` env var with 10s timeout
 - Uses crypto/rand for URL-safe IDs (10 chars)
 - Atomic ownership checks: `WHERE id=$1 AND session_id=$2` (no TOCTOU races)
 - **Graceful degradation**: If DB unavailable, app starts without persistence; pasta endpoints return 503
+
+**Gallery & Likes (Phase 5):**
+- `ListPublic` uses a CTE (`WITH page AS (...)`) for pagination + LEFT JOIN on likes for counts and `liked_by_me`
+- `LikePasta` uses `INSERT...SELECT WHERE is_public=TRUE` — prevents liking non-public pastas within the statement (note: concurrent unpublish can still race under MVCC)
+- `SetPublicByOwner` wraps in a transaction: UPDATE pasta → DELETE likes (on unpublish). Atomic.
+- `IsPublicPasta` is a lightweight `SELECT EXISTS(...)` check — used by the unlike handler to avoid loading full art
+- Schema includes `likes` table: `(pasta_id, session_id)` composite primary key + `idx_likes_session` index on `(session_id)`
+- Offset clamped to 0 if negative (defensive pagination)
 
 ---
 
@@ -172,7 +185,8 @@ Global middleware chain (in order):
 | App | `src/App.tsx` | Main layout, state management, conversion flow, share link |
 | ImageUploader | `src/components/ImageUploader.tsx` | File input, drag-drop, paste support |
 | AsciiOutput | `src/components/AsciiOutput.tsx` | Displays result, copy button |
-| HistoryPanel | `src/components/HistoryPanel.tsx` | Recent conversions list with share/view/delete |
+| HistoryPanel | `src/components/HistoryPanel.tsx` | Recent conversions list with share/view/delete/publish toggle |
+| Gallery | `src/components/Gallery.tsx` | Public gallery with like button, pagination, expand/collapse |
 | PastaView | `src/components/PastaView.tsx` | Share page (`/pasta/:id`) with read-only ASCII view |
 
 ### Routing: `src/main.tsx`
@@ -189,7 +203,14 @@ Global middleware chain (in order):
 - `getPasta(id)` → `Promise<Pasta>` — fetch a single pasta by ID
 - `listPastas(limit?, offset?)` → `Promise<Pasta[]>` — list user's pastas (returns `[]` on 503)
 - `deletePasta(id)` → `Promise<void>` — delete a pasta by ID
+- `setPublic(id, isPublic)` → `Promise<void>` — toggle publish status
 - All use `credentials: 'include'` and `encodeURIComponent(id)` in paths
+
+### API Client: `src/api/gallery.ts`
+- `listGallery(limit?, offset?)` → `Promise<GalleryPasta[]>` — paginated gallery listing
+- `likePasta(id)` → `Promise<{like_count, liked_by_me}>` — like a public pasta
+- `unlikePasta(id)` → `Promise<{like_count, liked_by_me}>` — unlike a pasta
+- `GalleryPasta` is `Omit<Pasta, 'is_public'>` plus `like_count` and `liked_by_me` fields
 
 ### Vite Config
 - Proxies `/api` to `http://localhost:8080` in dev mode
@@ -336,14 +357,62 @@ Set public/private visibility (owner only).
 **Errors**: `404 Not Found` (or not owner), `503 Service Unavailable`
 
 ### `GET /api/health`
-Health check endpoint.
+Rich health check endpoint. Returns 503 when degraded (e.g., database unreachable).
+
+**Response**: `200 OK` (or `503 Service Unavailable` when degraded)
+```json
+{
+  "status": "healthy",
+  "version": "dev",
+  "uptime_seconds": 3600,
+  "checks": {
+    "database": { "status": "up", "latency_ms": 2 }
+  }
+}
+```
+
+### `GET /api/gallery`
+Lists public pastas with like counts (paginated).
+
+**Query params**: `limit` (default 20), `offset` (default 0)
 
 **Response**: `200 OK`
 ```json
 {
-  "status": "ok"
+  "pastas": [
+    {
+      "id": "abc123",
+      "ascii_art": "...",
+      "width": 80,
+      "height": 40,
+      "mode": "braille",
+      "created_at": "2025-01-01T00:00:00Z",
+      "like_count": 5,
+      "liked_by_me": true
+    }
+  ]
 }
 ```
+
+### `POST /api/pastas/:id/like`
+Like a public pasta. Idempotent — no-op if already liked.
+
+**Response**: `200 OK`
+```json
+{ "like_count": 6, "liked_by_me": true }
+```
+
+**Errors**: `404` if pasta doesn't exist or is not public; `503` if no persistence.
+
+### `DELETE /api/pastas/:id/like`
+Unlike a pasta. Idempotent — no-op if not liked.
+
+**Response**: `200 OK`
+```json
+{ "like_count": 5, "liked_by_me": false }
+```
+
+**Errors**: `404` if pasta doesn't exist or is not public; `503` if no persistence.
 
 ---
 

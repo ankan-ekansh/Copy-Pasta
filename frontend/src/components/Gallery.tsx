@@ -38,7 +38,7 @@ export function Gallery({ onBack }: GalleryProps) {
 
   useEffect(() => {
     let ignore = false;
-    // offset starts at 0; handleLoadMore is only reachable when pastas are loaded
+    // offset starts at 0; handleLoadMore is guarded by pastas.length > 0 && !error
     listGallery(PAGE_SIZE, 0).then(items => {
       if (!ignore) {
         setPastas(items);
@@ -172,7 +172,7 @@ export function Gallery({ onBack }: GalleryProps) {
         ))}
       </div>
 
-      {hasMore && !loading && (
+      {hasMore && !loading && !error && pastas.length > 0 && (
         <button type="button" className="gallery-load-more" onClick={handleLoadMore}>
           Load more
         </button>

@@ -117,9 +117,30 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 - `PATCH /api/pastas/:id` — set is_public (atomic ownership check)
 
 ### Middleware: `backend/internal/middleware/middleware.go`
-- Chi's built-in Logger and Recoverer
-- CORS with origin validation, credentials support, wildcard+credentials guard
-- Session cookie middleware: sets `copy-pasta-session` UUID cookie (HttpOnly, SameSite=Lax, Secure via TLS/X-Forwarded-Proto)
+Middleware chain (in order):
+1. **CORS** — Origin validation, credentials support, wildcard+credentials guard
+2. **RealIP** (`chi/middleware.RealIP`) — Extracts client IP from `X-Forwarded-For`/`X-Real-IP` headers (required before rate limiting)
+3. **RateLimitAPI** — Global 100 req/min per IP (configurable via `RATE_LIMIT_API`)
+4. **RequestID** — Generates/propagates `X-Request-ID` header
+5. **Metrics** — Records HTTP request count and duration (Prometheus histograms)
+6. **RequestLog** — Structured access logging via `slog`
+7. **Recoverer** — Panic recovery
+8. **Session** — Sets `copy-pasta-session` UUID cookie (HttpOnly, SameSite=Lax, Secure via TLS/X-Forwarded-Proto)
+
+### Rate Limiting: `backend/internal/middleware/ratelimit.go`
+- **RateLimitConvert()** — Applied per-route on `POST /api/convert` via `r.With()`. 10 req/min per IP (configurable via `RATE_LIMIT_CONVERT`).
+- **RateLimitAPI()** — Applied globally in middleware chain. 100 req/min per IP (configurable via `RATE_LIMIT_API`).
+- Uses `go-chi/httprate` with `WithKeyByRealIP()` for proper IP extraction behind proxies.
+- Returns 429 with JSON `{"error": "rate limit exceeded, try again later"}` and `Retry-After: 60` header.
+
+### Metrics: `backend/internal/metrics/`
+- Prometheus counters and histograms (no namespace prefix)
+- Metric names: `conversions_total`, `conversion_duration_seconds`, `http_requests_total`, `http_request_duration_seconds`, `db_operation_duration_seconds`
+- `/metrics` endpoint gated by `EXPOSE_METRICS=true` (opt-in)
+
+### InstrumentedStore: `backend/internal/store/instrumented.go`
+- Decorator wrapping any `Store` implementation to record `db_operation_duration_seconds`
+- Exposes `Ping()` via type assertion on inner store (returns `ErrPingNotSupported` if inner lacks it)
 
 ### Store: `backend/internal/store/`
 - `Store` interface: `Save`, `Get`, `ListBySession`, `DeleteByOwner`, `SetPublicByOwner`, `Close`
@@ -184,6 +205,7 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 | `make dev-frontend` | Vite dev server only |
 | `make build` | Build both projects |
 | `make docker-up` | Build & start Docker Compose |
+| `make docker-up-obs` | Build & start with observability (Prometheus + Grafana) |
 | `make docker-down` | Stop Docker Compose |
 | `make test` | Run Go tests |
 | `make lint` | Run linters (go vet + eslint) |

@@ -109,6 +109,7 @@ Every code change should trigger a doc check:
 - Do file paths in docs point to files that exist?
 - Do code snippets in docs match the actual implementation?
 - Do usage instructions (commands, credentials, ports) reflect current reality?
+- Does `docs/IMPLEMENTATION.md` reflect new middleware, handlers, or architectural components?
 
 ### 5. Self-Review Before Pushing
 
@@ -167,5 +168,7 @@ make docker-down
 | `docker-compose.yml` | Local dev stack |
 | `infra/` | Prometheus, Grafana, Azure deployment configs |
 | `docs/PLAN.md` | Phase-by-phase roadmap |
+| `docs/IMPLEMENTATION.md` | Detailed implementation guide (algorithms, API reference, design decisions) |
 | `docs/OBSERVABILITY.md` | Observability architecture and decisions |
+| `docs/ARCHITECTURE.md` | System overview, footguns, module boundaries |
 

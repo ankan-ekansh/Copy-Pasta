@@ -226,6 +226,22 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 
 ---
 
+## Phase 4b: Distributed Tracing — "See the Waterfall" (Stretch)
+**Status**: Future  
+**Goal**: Add OpenTelemetry tracing for end-to-end request visibility (frontend → backend → DB).
+
+| Task | Status |
+|------|--------|
+| OpenTelemetry SDK integration (Go) | ⬜ |
+| Trace propagation (W3C TraceContext headers) | ⬜ |
+| DB span instrumentation | ⬜ |
+| Jaeger or Tempo as trace backend | ⬜ |
+| Trace → Request ID correlation | ⬜ |
+
+> **Note**: Phase 4 adds X-Request-ID correlation, which covers our current needs. Distributed tracing becomes valuable when we add async workers, multiple services, or need per-request latency breakdowns. The request IDs from Phase 4 will serve as correlation keys in traces.
+
+---
+
 ## Phase 5: Sharing & Social — "Show Off Your Art"
 **Status**: Planned  
 **Goal**: Let users share creations and see what others made.

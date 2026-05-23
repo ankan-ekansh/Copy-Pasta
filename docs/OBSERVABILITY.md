@@ -263,6 +263,19 @@ Step 1 (slog) → Step 2 (request ID) → Step 3 (access log) → Step 4 (health
 
 ---
 
+## Future: Distributed Tracing (Phase 4b)
+
+When the app grows (async workers, multiple services), upgrade from request correlation to full distributed tracing:
+
+- **OpenTelemetry Go SDK** — auto-instruments HTTP handlers and DB calls
+- **W3C TraceContext** headers — propagates trace/span IDs across services
+- **Jaeger or Grafana Tempo** — trace backend (Tempo integrates with our existing Grafana)
+- **Request ID bridge** — our X-Request-ID becomes a correlation attribute on each trace
+
+This is intentionally deferred: for a single-service app, Prometheus metrics + request correlation give 95% of the debugging value at 10% of the complexity.
+
+---
+
 ## Dependencies
 
 | Dependency | Purpose | Scope |

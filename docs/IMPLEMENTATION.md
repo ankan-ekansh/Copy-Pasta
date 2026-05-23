@@ -108,7 +108,7 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 - Decodes JPEG/PNG/GIF, routes to appropriate converter, returns JSON response
 - Auto-saves to DB on successful conversion (best-effort, never fails the request)
 - Returns `id` field in response when persistence is available
-- `GET /api/health`: Returns `{"status": "ok"}`
+- `GET /api/health`: Rich health check (status/version/uptime/checks); returns 503 when degraded
 
 ### Handler: `backend/internal/handler/pastas.go`
 - `GET /api/pastas` — list pastas for current session (paginated via limit/offset)
@@ -357,12 +357,17 @@ Set public/private visibility (owner only).
 **Errors**: `404 Not Found` (or not owner), `503 Service Unavailable`
 
 ### `GET /api/health`
-Health check endpoint.
+Rich health check endpoint. Returns 503 when degraded (e.g., database unreachable).
 
-**Response**: `200 OK`
+**Response**: `200 OK` (or `503 Service Unavailable` when degraded)
 ```json
 {
-  "status": "ok"
+  "status": "healthy",
+  "version": "dev",
+  "uptime_seconds": 3600,
+  "checks": {
+    "database": { "status": "up", "latency_ms": 2 }
+  }
 }
 ```
 

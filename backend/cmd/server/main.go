@@ -46,13 +46,18 @@ func main() {
 
 	h := handler.New(handler.WithStore(s))
 	r.Route("/api", func(api chi.Router) {
-		api.Use(appmiddleware.RateLimitAPI())
-		api.Get("/health", h.Health)
+		// /api/convert has its own stricter rate limit — excluded from RateLimitAPI
 		api.With(appmiddleware.RateLimitConvert()).Post("/convert", h.Convert)
-		api.Get("/pastas", h.ListPastas)
-		api.Get("/pastas/{id}", h.GetPasta)
-		api.Delete("/pastas/{id}", h.DeletePasta)
-		api.Patch("/pastas/{id}", h.SetPublic)
+
+		// All other API routes share the general rate limit
+		api.Group(func(general chi.Router) {
+			general.Use(appmiddleware.RateLimitAPI())
+			general.Get("/health", h.Health)
+			general.Get("/pastas", h.ListPastas)
+			general.Get("/pastas/{id}", h.GetPasta)
+			general.Delete("/pastas/{id}", h.DeletePasta)
+			general.Patch("/pastas/{id}", h.SetPublic)
+		})
 	})
 
 	// Expose /metrics endpoint for Prometheus scraping.

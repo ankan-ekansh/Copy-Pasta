@@ -9,6 +9,7 @@ import (
 )
 
 func TestRateLimitConvert_UnderLimit(t *testing.T) {
+	t.Setenv("RATE_LIMIT_CONVERT", "10")
 	handler := RateLimitConvert()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -25,6 +26,7 @@ func TestRateLimitConvert_UnderLimit(t *testing.T) {
 }
 
 func TestRateLimitConvert_OverLimit(t *testing.T) {
+	t.Setenv("RATE_LIMIT_CONVERT", "10")
 	handler := RateLimitConvert()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -67,6 +69,7 @@ func TestRateLimitConvert_OverLimit(t *testing.T) {
 }
 
 func TestRateLimitConvert_DifferentIPsAreIndependent(t *testing.T) {
+	t.Setenv("RATE_LIMIT_CONVERT", "10")
 	handler := RateLimitConvert()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))

@@ -2,11 +2,9 @@ package store
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -192,15 +190,25 @@ func (s *PostgresStore) ListPublic(ctx context.Context, sessionID string, limit,
 }
 
 func (s *PostgresStore) LikePasta(ctx context.Context, pastaID, sessionID string) error {
-	_, err := s.pool.Exec(ctx,
-		"INSERT INTO likes (pasta_id, session_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+	result, err := s.pool.Exec(ctx,
+		`INSERT INTO likes (pasta_id, session_id)
+		 SELECT $1, $2 FROM pastas WHERE id = $1 AND is_public = TRUE
+		 ON CONFLICT DO NOTHING`,
 		pastaID, sessionID)
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
-			return ErrNotFound
-		}
 		return err
+	}
+	// No row inserted means pasta doesn't exist or isn't public
+	if result.RowsAffected() == 0 {
+		// Check if it's already liked (ON CONFLICT DO NOTHING)
+		var exists bool
+		_ = s.pool.QueryRow(ctx,
+			"SELECT EXISTS(SELECT 1 FROM likes WHERE pasta_id = $1 AND session_id = $2)",
+			pastaID, sessionID).Scan(&exists)
+		if exists {
+			return nil // idempotent: already liked
+		}
+		return ErrNotFound
 	}
 	return nil
 }

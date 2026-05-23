@@ -385,7 +385,7 @@ else
 fi
 
 # Ensure persistent volume is attached (idempotent — runs on both create and update)
-# Include env vars in container spec to avoid wiping them during YAML patch
+# Include env vars and resources in container spec to avoid wiping them during YAML patch
 echo "  Attaching persistent storage to Prometheus..."
 az containerapp update \
   --name "$PROMETHEUS_APP" \
@@ -400,6 +400,9 @@ properties:
     containers:
       - name: $PROMETHEUS_APP
         image: $PROMETHEUS_IMAGE
+        resources:
+          cpu: 0.25
+          memory: 0.5Gi
         env:
           - name: METRICS_TOKEN
             secretRef: metrics-token

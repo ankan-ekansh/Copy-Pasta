@@ -6,6 +6,15 @@
 
 A fun web app that converts meme images into ASCII art that you can copy-paste anywhere. Built with Go and React as a learning playground for backend development, frontend polish, and progressive productionization.
 
+## 📸 Screenshots
+
+### App in Action
+![Copy-Pasta App](docs/screenshots/app-in-action.png)
+
+### Grafana Observability Dashboard
+![Grafana Dashboard - Request Rate & Latency](docs/screenshots/grafana-dashboard.png)
+![Grafana Dashboard - Conversions & DB Ops](docs/screenshots/grafana-dashboard-2.png)
+
 ## ✨ Features
 
 - **Image to ASCII**: Upload, paste (Ctrl+V), or drag-and-drop any image (JPEG, PNG, GIF)

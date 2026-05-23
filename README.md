@@ -72,10 +72,10 @@ docker run -p 8080:8080 copy-pasta
 make docker-up-obs
 # App:        http://localhost:3000
 # Prometheus: http://localhost:9090
-# Grafana:    http://localhost:3001 (admin/changeme)
+# Grafana:    http://localhost:3001 (admin / $GF_SECURITY_ADMIN_PASSWORD, default: changeme)
 ```
 
-Requires `EXPOSE_METRICS=true` in `.env` (enables the `/metrics` endpoint on the backend).
+Requires `EXPOSE_METRICS=true` in `.env`. Set `GF_SECURITY_ADMIN_PASSWORD` in `.env` to change the Grafana password.
 
 **Available metrics:**
 | Metric | Type | Labels | Description |

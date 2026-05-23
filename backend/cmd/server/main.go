@@ -51,8 +51,11 @@ func main() {
 	r.Delete("/api/pastas/{id}", h.DeletePasta)
 	r.Patch("/api/pastas/{id}", h.SetPublic)
 
-	// Expose /metrics for Prometheus scraping (enabled by default; set METRICS_ENABLED=false to disable)
-	if os.Getenv("METRICS_ENABLED") != "false" {
+	// Expose /metrics endpoint for Prometheus scraping.
+	// Enabled by default. Set EXPOSE_METRICS=false to hide the endpoint.
+	// Note: internal instrumentation (middleware/store metrics) still runs regardless;
+	// this flag only controls whether the /metrics HTTP endpoint is mounted.
+	if os.Getenv("EXPOSE_METRICS") != "false" {
 		r.Handle("/metrics", promhttp.Handler())
 		slog.Info("metrics endpoint enabled", "path", "/metrics")
 	}

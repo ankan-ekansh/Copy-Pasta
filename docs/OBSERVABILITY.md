@@ -326,7 +326,7 @@ Step 1 (slog) → Step 2 (request ID) → Step 3 (access log) → Step 4 (health
 
 ---
 
-## Future: Distributed Tracing (Phase 4b)
+## Future: Distributed Tracing (Phase 4d)
 
 When the app grows (async workers, multiple services), upgrade from request correlation to full distributed tracing:
 

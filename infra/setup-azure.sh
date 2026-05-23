@@ -315,6 +315,13 @@ az containerapp update \
 PROM_SHARE="prometheus-data"
 echo "  Setting up persistent storage for Prometheus..."
 if ! az storage account show --name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" >/dev/null 2>&1; then
+  # Verify name is available globally before attempting create
+  NAME_AVAILABLE=$(az storage account check-name --name "$STORAGE_ACCOUNT" --query nameAvailable -o tsv)
+  if [ "$NAME_AVAILABLE" != "true" ]; then
+    echo "❌ ERROR: Storage account name '$STORAGE_ACCOUNT' is taken (exists in another resource group/subscription)."
+    echo "   Set STORAGE_ACCOUNT=<unique-name> and re-run."
+    exit 1
+  fi
   az storage account create \
     --name "$STORAGE_ACCOUNT" \
     --resource-group "$RESOURCE_GROUP" \

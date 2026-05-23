@@ -33,7 +33,8 @@ STORAGE_ACCOUNT="${STORAGE_ACCOUNT:-}"
 if [[ -z "$STORAGE_ACCOUNT" ]]; then
   # Derive a unique name: prefix + short hash of subscription ID for global uniqueness
   SUB_ID=$(az account show --query id -o tsv)
-  SUB_HASH=$(echo -n "$SUB_ID" | md5sum | cut -c1-6)
+  # Use openssl for portability (md5sum not available on macOS)
+  SUB_HASH=$(echo -n "$SUB_ID" | openssl dgst -md5 | awk '{print $NF}' | cut -c1-6)
   STORAGE_ACCOUNT="copypasta${SUB_HASH}"
 fi
 # Validate Azure storage account naming rules (3-24 chars, lowercase alphanumeric only)

@@ -420,7 +420,7 @@ echo "  Waiting for Prometheus FQDN..."
 PROMETHEUS_FQDN=""
 for i in 1 2 3 4 5; do
   PROMETHEUS_FQDN=$(az containerapp show --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GROUP" \
-    --query "properties.configuration.ingress.fqdn" -o tsv || true)
+    --query "properties.configuration.ingress.fqdn" -o tsv)
   if [[ -n "$PROMETHEUS_FQDN" ]]; then break; fi
   sleep 5
 done

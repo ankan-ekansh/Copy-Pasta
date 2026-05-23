@@ -54,7 +54,7 @@ echo ""
 # --- Step 0: Register required resource providers ---
 PROVIDERS=("Microsoft.App" "Microsoft.OperationalInsights" "Microsoft.ContainerRegistry" "Microsoft.DBforPostgreSQL")
 for provider in "${PROVIDERS[@]}"; do
-  state=$(az provider show --namespace "$provider" --query "registrationState" -o tsv 2>/dev/null || echo "NotRegistered")
+  state=$(az provider show --namespace "$provider" --query "registrationState" -o tsv || echo "NotRegistered")
   if [ "$state" != "Registered" ]; then
     echo "🔧 Registering resource provider $provider..."
     az provider register -n "$provider" --wait
@@ -287,8 +287,14 @@ echo "📊 Setting up observability stack..."
 # Ensure the main app exposes /metrics for Prometheus to scrape (token-protected).
 # Token stored as Container Apps secret; reused if already exists.
 echo "  Enabling metrics endpoint on main app..."
-EXISTING_TOKEN=$(az containerapp secret show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
-  --secret-name metrics-token --query value -o tsv 2>/dev/null || echo "")
+# Check if metrics token secret already exists (avoid rotation/downtime)
+if az containerapp secret list --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+  --query "[?name=='metrics-token'].name" -o tsv | grep -q metrics-token; then
+  EXISTING_TOKEN=$(az containerapp secret show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+    --secret-name metrics-token --query value -o tsv)
+else
+  EXISTING_TOKEN=""
+fi
 if [[ -n "$EXISTING_TOKEN" ]]; then
   METRICS_TOKEN="$EXISTING_TOKEN"
   echo "  Reusing existing metrics token."
@@ -411,7 +417,7 @@ echo "  Waiting for Prometheus FQDN..."
 PROMETHEUS_FQDN=""
 for i in 1 2 3 4 5; do
   PROMETHEUS_FQDN=$(az containerapp show --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GROUP" \
-    --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null)
+    --query "properties.configuration.ingress.fqdn" -o tsv || true)
   if [[ -n "$PROMETHEUS_FQDN" ]]; then break; fi
   sleep 5
 done
@@ -462,7 +468,7 @@ else
 fi
 
 GRAFANA_URL=$(az containerapp show --name "$GRAFANA_APP" --resource-group "$RESOURCE_GROUP" \
-  --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "pending")
+  --query "properties.configuration.ingress.fqdn" -o tsv || echo "pending")
 
 echo ""
 echo "✅ Infrastructure ready!"

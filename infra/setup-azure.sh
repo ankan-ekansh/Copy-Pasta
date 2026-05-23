@@ -394,7 +394,7 @@ else
 fi
 
 # Ensure persistent volume is attached (idempotent — runs on both create and update)
-# Include env vars and resources in container spec to avoid wiping them during YAML patch
+# Include env vars, resources, and scale in template to avoid wiping them during YAML patch
 echo "  Attaching persistent storage to Prometheus..."
 az containerapp update \
   --name "$PROMETHEUS_APP" \
@@ -402,6 +402,9 @@ az containerapp update \
   --yaml /dev/stdin <<EOF
 properties:
   template:
+    scale:
+      minReplicas: 1
+      maxReplicas: 1
     volumes:
       - name: promdata
         storageName: promdata

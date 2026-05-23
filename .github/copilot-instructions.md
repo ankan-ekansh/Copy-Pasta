@@ -122,7 +122,7 @@ Simulate a reviewer reading your diff:
 
 ### 6. Keep Instructions Current
 
-If your work reveals a convention not documented in this file, or contradicts an existing instruction, update `copilot-instructions.md` or `docs/ARCHITECTURE.md` in the same PR. Treat these files as living documentation — they evolve with the code.
+If your work reveals a convention not documented in this file, or contradicts an existing instruction, update `.github/copilot-instructions.md` or `docs/ARCHITECTURE.md` in the same PR. Treat these files as living documentation — they evolve with the code.
 
 ---
 

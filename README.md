@@ -26,6 +26,8 @@ A fun web app that converts meme images into ASCII art that you can copy-paste a
 - **History panel**: Recent conversions with share link, view, and delete actions
 - **Session-based ownership**: Anonymous cookie-based sessions, no login required
 - **REST API**: Manage pastas (list, view, delete, publish) with auto-save on convert
+- **Public gallery**: Browse published pastas, like/unlike, paginated feed
+- **Like system**: Session-scoped likes with real-time counts, enforces public-only constraint
 - **Mobile share presets**: One-tap widths for WhatsApp, iMessage, Twitter, Telegram, Discord, Reddit
 - **Dark/light theme**: Toggle with system preference detection and localStorage persistence
 - **Configurable output**: Width slider, invert, A/B mode toggle (ASCII vs Braille)
@@ -104,14 +106,14 @@ Copy-Pasta/
 ├── backend/
 │   ├── cmd/server/         # Entry point (serves API + static frontend)
 │   └── internal/
-│       ├── handler/        # HTTP handlers (convert, pastas management)
+│       ├── handler/        # HTTP handlers (convert, pastas, gallery + likes)
 │       ├── converter/      # Image → ASCII/Braille engine
 │       ├── middleware/     # CORS, rate limiting, logging, metrics, session cookies
-│       └── store/          # PostgreSQL persistence (pgx/v5)
+│       └── store/          # PostgreSQL persistence (pgx/v5, likes table, transactions)
 ├── frontend/
 │   ├── src/
-│   │   ├── components/     # React components (ImageUploader, AsciiOutput, HistoryPanel, PastaView, ThemeToggle)
-│   │   ├── api/            # API clients (convert, pastas)
+│   │   ├── components/     # React components (ImageUploader, AsciiOutput, HistoryPanel, Gallery, PastaView, ThemeToggle)
+│   │   ├── api/            # API clients (convert, pastas, gallery)
 │   │   └── App.tsx         # Main app with controls, presets, mode toggle
 │   └── index.html
 ├── infra/
@@ -138,8 +140,8 @@ Copy-Pasta/
 - [x] **Phase 3**: Persistence — PostgreSQL, session cookies, shareable URLs, history panel, share page
 - [x] **Phase 4a-c**: Observability — structured logging, Prometheus metrics, rate limiting
 - [ ] **Phase 4d**: Distributed tracing (OpenTelemetry, Jaeger/Tempo)
-- [ ] **Phase 5**: Social — public gallery, likes, leaderboard, OG meta share cards
-- [ ] **Phase 6**: Production hardening — graceful shutdown, migrations, CDN, alerting
+- [x] **Phase 5**: Social — public gallery, likes (core complete; OG meta share cards & leaderboard stretch goals)
+- [ ] **Phase 6**: Production hardening — image validation, pagination optimization, graceful shutdown
 
 See **[docs/PLAN.md](docs/PLAN.md)** for detailed task tracking.
 

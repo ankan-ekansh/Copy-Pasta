@@ -208,7 +208,7 @@ CREATE INDEX idx_pastas_public ON pastas(is_public, created_at);
 ---
 
 ## Phase 4: Observability — "See What's Happening"
-**Status**: In Progress  
+**Status**: Complete  
 **Goal**: Structured logging, metrics, dashboards, and request correlation (X-Request-ID).
 
 | Task | Status |
@@ -291,7 +291,7 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 ---
 
 ## Phase 5: Sharing & Social — "Show Off Your Art"
-**Status**: In Progress  
+**Status**: Complete (core)  
 **Goal**: Let users share creations and see what others made.
 
 | Task | Status |

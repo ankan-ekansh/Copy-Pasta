@@ -56,6 +56,34 @@ func (s *InstrumentedStore) SetPublicByOwner(ctx context.Context, id, sessionID 
 	return err
 }
 
+func (s *InstrumentedStore) ListPublic(ctx context.Context, sessionID string, limit, offset int) ([]GalleryPasta, error) {
+	start := time.Now()
+	pastas, err := s.inner.ListPublic(ctx, sessionID, limit, offset)
+	s.record("list_public", start, err)
+	return pastas, err
+}
+
+func (s *InstrumentedStore) LikePasta(ctx context.Context, pastaID, sessionID string) error {
+	start := time.Now()
+	err := s.inner.LikePasta(ctx, pastaID, sessionID)
+	s.record("like", start, err)
+	return err
+}
+
+func (s *InstrumentedStore) UnlikePasta(ctx context.Context, pastaID, sessionID string) error {
+	start := time.Now()
+	err := s.inner.UnlikePasta(ctx, pastaID, sessionID)
+	s.record("unlike", start, err)
+	return err
+}
+
+func (s *InstrumentedStore) GetLikeCount(ctx context.Context, pastaID, sessionID string) (int, bool, error) {
+	start := time.Now()
+	count, liked, err := s.inner.GetLikeCount(ctx, pastaID, sessionID)
+	s.record("get_like_count", start, err)
+	return count, liked, err
+}
+
 func (s *InstrumentedStore) Close() {
 	s.inner.Close()
 }

@@ -26,9 +26,17 @@ func (m *mockStore) Get(_ context.Context, _ string) (*Pasta, error)     { retur
 func (m *mockStore) ListBySession(_ context.Context, _ string, _, _ int) ([]Pasta, error) {
 	return m.listResult, m.listErr
 }
+func (m *mockStore) ListPublic(_ context.Context, _ string, _, _ int) ([]GalleryPasta, error) {
+	return nil, nil
+}
 func (m *mockStore) DeleteByOwner(_ context.Context, _, _ string) error  { return m.deleteErr }
 func (m *mockStore) SetPublicByOwner(_ context.Context, _, _ string, _ bool) error {
 	return m.setPublicErr
+}
+func (m *mockStore) LikePasta(_ context.Context, _, _ string) error   { return nil }
+func (m *mockStore) UnlikePasta(_ context.Context, _, _ string) error  { return nil }
+func (m *mockStore) GetLikeCount(_ context.Context, _, _ string) (int, bool, error) {
+	return 0, false, nil
 }
 func (m *mockStore) Close() { m.closed = true }
 

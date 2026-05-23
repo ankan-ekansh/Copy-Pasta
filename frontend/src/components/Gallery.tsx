@@ -1,0 +1,157 @@
+import { useState, useEffect } from 'react';
+import { listGallery, likePasta, unlikePasta, type GalleryPasta } from '../api/gallery';
+
+interface GalleryProps {
+  onBack: () => void;
+}
+
+export function Gallery({ onBack }: GalleryProps) {
+  const [pastas, setPastas] = useState<GalleryPasta[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const limit = 20;
+
+  const loadGallery = async (pageOffset: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const items = await listGallery(limit, pageOffset);
+      if (pageOffset === 0) {
+        setPastas(items);
+      } else {
+        setPastas(prev => [...prev, ...items]);
+      }
+      setHasMore(items.length === limit);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load gallery');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let ignore = false;
+    listGallery(limit, 0).then(items => {
+      if (!ignore) {
+        setPastas(items);
+        setHasMore(items.length === limit);
+        setLoading(false);
+      }
+    }).catch(err => {
+      if (!ignore) {
+        setError(err instanceof Error ? err.message : 'Failed to load gallery');
+        setLoading(false);
+      }
+    });
+    return () => { ignore = true; };
+  }, []);
+
+  const handleLike = async (id: string, currentlyLiked: boolean) => {
+    try {
+      const result = currentlyLiked
+        ? await unlikePasta(id)
+        : await likePasta(id);
+
+      setPastas(prev => prev.map(p =>
+        p.id === id
+          ? { ...p, like_count: result.like_count, liked_by_me: result.liked }
+          : p
+      ));
+    } catch {
+      // silently ignore like errors
+    }
+  };
+
+  const handleLoadMore = () => {
+    const newOffset = offset + limit;
+    setOffset(newOffset);
+    loadGallery(newOffset);
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  return (
+    <div className="gallery">
+      <div className="gallery-header">
+        <button className="gallery-back-btn" onClick={onBack}>← Back</button>
+        <h2>🖼️ Public Gallery</h2>
+        <p className="gallery-subtitle">Community ASCII masterpieces</p>
+      </div>
+
+      {error && <div className="gallery-error">{error}</div>}
+
+      {pastas.length === 0 && !loading && (
+        <div className="gallery-empty">
+          <p>No public pastas yet. Be the first to publish! 🎨</p>
+          <p className="gallery-empty-hint">Use the "Publish" button on your pastas to share them here.</p>
+        </div>
+      )}
+
+      <div className="gallery-grid">
+        {pastas.map(pasta => (
+          <div key={pasta.id} className="gallery-card">
+            <div
+              className="gallery-card-preview"
+              onClick={() => setExpandedId(expandedId === pasta.id ? null : pasta.id)}
+            >
+              <pre className="gallery-card-ascii">
+                {pasta.ascii_art.slice(0, 500)}{pasta.ascii_art.length > 500 ? '...' : ''}
+              </pre>
+            </div>
+
+            <div className="gallery-card-footer">
+              <div className="gallery-card-meta">
+                <span className="gallery-card-mode">{pasta.mode === 'braille' ? '⣿' : 'A'}</span>
+                <span className="gallery-card-size">{pasta.width}w</span>
+                <span className="gallery-card-date">
+                  {new Date(pasta.created_at).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="gallery-card-actions">
+                <button
+                  className={`gallery-like-btn ${pasta.liked_by_me ? 'liked' : ''}`}
+                  onClick={() => handleLike(pasta.id, pasta.liked_by_me)}
+                  title={pasta.liked_by_me ? 'Unlike' : 'Like'}
+                >
+                  {pasta.liked_by_me ? '❤️' : '🤍'} {pasta.like_count}
+                </button>
+                <button
+                  className="gallery-copy-btn"
+                  onClick={() => copyToClipboard(pasta.ascii_art)}
+                  title="Copy ASCII"
+                >
+                  📋
+                </button>
+              </div>
+            </div>
+
+            {expandedId === pasta.id && (
+              <div className="gallery-card-expanded">
+                <pre className="gallery-card-full-ascii">{pasta.ascii_art}</pre>
+                <button
+                  className="gallery-copy-full-btn"
+                  onClick={() => copyToClipboard(pasta.ascii_art)}
+                >
+                  📋 Copy full ASCII
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {hasMore && !loading && (
+        <button className="gallery-load-more" onClick={handleLoadMore}>
+          Load more
+        </button>
+      )}
+
+      {loading && <div className="gallery-loading">Loading...</div>}
+    </div>
+  );
+}

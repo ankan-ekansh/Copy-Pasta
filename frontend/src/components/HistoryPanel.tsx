@@ -1,6 +1,6 @@
 import { useEffect, useReducer } from 'react';
 import { Link } from 'react-router-dom';
-import { listPastas, deletePasta, type Pasta } from '../api/pastas';
+import { listPastas, deletePasta, setPublic, type Pasta } from '../api/pastas';
 
 interface HistoryPanelProps {
   refreshTrigger?: number;
@@ -12,6 +12,7 @@ type Action =
   | { type: 'loaded'; pastas: Pasta[] }
   | { type: 'error'; message: string }
   | { type: 'remove'; id: string }
+  | { type: 'toggle-public'; id: string; isPublic: boolean }
   | { type: 'delete-error'; message: string }
   | { type: 'clear-delete-error' };
 
@@ -21,6 +22,7 @@ function reducer(state: State, action: Action): State {
     case 'loaded': return { ...state, pastas: action.pastas, loading: false, error: '' };
     case 'error': return { ...state, loading: false, error: action.message };
     case 'remove': return { ...state, pastas: state.pastas.filter((p) => p.id !== action.id) };
+    case 'toggle-public': return { ...state, pastas: state.pastas.map((p) => p.id === action.id ? { ...p, is_public: action.isPublic } : p) };
     case 'delete-error': return { ...state, deleteError: action.message };
     case 'clear-delete-error': return { ...state, deleteError: '' };
     default: return state;
@@ -52,6 +54,15 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
   const handleCopyLink = (id: string) => {
     const url = `${window.location.origin}/pasta/${encodeURIComponent(id)}`;
     navigator.clipboard?.writeText(url)?.catch(() => {});
+  };
+
+  const handleTogglePublic = async (id: string, currentlyPublic: boolean) => {
+    try {
+      await setPublic(id, !currentlyPublic);
+      dispatch({ type: 'toggle-public', id, isPublic: !currentlyPublic });
+    } catch {
+      dispatch({ type: 'delete-error', message: 'Failed to update visibility' });
+    }
   };
 
   if (state.loading) {
@@ -95,6 +106,15 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
               </span>
             </div>
             <div className="history-item-actions">
+              <button
+                type="button"
+                className={`history-btn ${pasta.is_public ? 'history-btn-active' : ''}`}
+                onClick={() => handleTogglePublic(pasta.id, pasta.is_public)}
+                aria-label={pasta.is_public ? 'Unpublish from gallery' : 'Publish to gallery'}
+                title={pasta.is_public ? 'Published ✓' : 'Publish to gallery'}
+              >
+                {pasta.is_public ? '🌐' : '📤'}
+              </button>
               <button
                 type="button"
                 className="history-btn"

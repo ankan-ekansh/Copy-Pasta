@@ -291,14 +291,16 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 ---
 
 ## Phase 5: Sharing & Social — "Show Off Your Art"
-**Status**: Planned  
+**Status**: In Progress  
 **Goal**: Let users share creations and see what others made.
 
 | Task | Status |
 |------|--------|
-| Public gallery (opt-in sharing) | ⬜ |
+| Public gallery (opt-in sharing) | ✅ |
+| Like / upvote system | ✅ |
+| Gallery UI with like counts | ✅ |
+| Publish toggle in history panel | ✅ |
 | Share links with OG meta tags | ⬜ |
-| Like / upvote system | ⬜ |
 | Leaderboard: most liked | ⬜ |
 
 ---

@@ -138,7 +138,7 @@ Copy-Pasta/
 - [x] **Phase 3**: Persistence — PostgreSQL, session cookies, shareable URLs, history panel, share page
 - [x] **Phase 4a-c**: Observability — structured logging, Prometheus metrics, rate limiting
 - [ ] **Phase 4d**: Distributed tracing (OpenTelemetry, Jaeger/Tempo)
-- [ ] **Phase 5**: Social — public gallery, OG meta share cards, likes, leaderboard
+- [ ] **Phase 5**: Social — public gallery, likes, leaderboard, OG meta share cards
 - [ ] **Phase 6**: Production hardening — graceful shutdown, migrations, CDN, alerting
 
 See **[docs/PLAN.md](docs/PLAN.md)** for detailed task tracking.

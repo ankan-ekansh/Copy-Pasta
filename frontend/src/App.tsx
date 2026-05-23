@@ -4,6 +4,7 @@ import { AsciiOutput } from './components/AsciiOutput';
 import { ImageUploader } from './components/ImageUploader';
 import { HistoryPanel } from './components/HistoryPanel';
 import { ThemeToggle } from './components/ThemeToggle';
+import { Gallery } from './components/Gallery';
 import './App.css';
 
 const DEFAULT_WIDTH = 150;
@@ -34,6 +35,7 @@ function App() {
   const [error, setError] = useState('');
   const [isConverting, setIsConverting] = useState(false);
   const [historyRefresh, setHistoryRefresh] = useState(0);
+  const [view, setView] = useState<'app' | 'gallery'>('app');
 
   const shareUrl = result?.id
     ? `${window.location.origin}/pasta/${encodeURIComponent(result.id)}`
@@ -84,9 +86,18 @@ function App() {
           <span>📋 Paste friendly</span>
           <span>🎚️ Width controls</span>
           <span>🌗 Invert mode</span>
+          <button
+            className={`nav-badge ${view === 'gallery' ? 'active' : ''}`}
+            onClick={() => setView(view === 'gallery' ? 'app' : 'gallery')}
+          >
+            🖼️ Gallery
+          </button>
         </div>
       </header>
 
+      {view === 'gallery' ? (
+        <Gallery onBack={() => setView('app')} />
+      ) : (
       <main className="app-grid">
         <div className="panel-stack">
           <ImageUploader
@@ -251,6 +262,7 @@ function App() {
           <HistoryPanel refreshTrigger={historyRefresh} />
         </div>
       </main>
+      )}
     </div>
   );
 }

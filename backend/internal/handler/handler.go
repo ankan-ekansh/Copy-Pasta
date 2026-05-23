@@ -9,8 +9,10 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/converter"
+	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/metrics"
 	appmiddleware "github.com/ankan-ekansh/Copy-Pasta/backend/internal/middleware"
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/store"
 
@@ -219,6 +221,7 @@ func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var ascii string
+	convStart := time.Now()
 	if mode == "braille" {
 		brailleWidth := width
 		if brailleWidth == converter.DefaultWidth {
@@ -239,6 +242,8 @@ func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {
 			CharRamp: charRamp,
 		})
 	}
+	metrics.ConversionsTotal.WithLabelValues(mode).Inc()
+	metrics.ConversionDuration.WithLabelValues(mode).Observe(time.Since(convStart).Seconds())
 	trimmed := strings.TrimRight(ascii, "\n")
 	height := 0
 	if trimmed != "" {

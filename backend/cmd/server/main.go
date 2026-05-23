@@ -6,18 +6,22 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/handler"
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/logging"
+	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/metrics"
 	appmiddleware "github.com/ankan-ekansh/Copy-Pasta/backend/internal/middleware"
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/store"
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
 	logging.Init()
+	metrics.Register()
 
 	r := chi.NewRouter()
 	appmiddleware.Register(r)
@@ -32,6 +36,7 @@ func main() {
 		if err != nil {
 			slog.Warn("failed to connect to database, persistence disabled", "error", err)
 		} else {
+			s = store.NewInstrumented(s)
 			defer s.Close()
 			slog.Info("connected to database")
 		}
@@ -46,6 +51,15 @@ func main() {
 	r.Get("/api/pastas/{id}", h.GetPasta)
 	r.Delete("/api/pastas/{id}", h.DeletePasta)
 	r.Patch("/api/pastas/{id}", h.SetPublic)
+
+	// Expose /metrics endpoint for Prometheus scraping.
+	// Requires EXPOSE_METRICS=true (or any truthy value: 1, t, yes) to mount the endpoint.
+	// Note: internal instrumentation (middleware/store metrics) still runs regardless;
+	// this flag only controls whether the /metrics HTTP endpoint is reachable.
+	if exposeMetrics, err := strconv.ParseBool(os.Getenv("EXPOSE_METRICS")); err == nil && exposeMetrics {
+		r.Handle("/metrics", promhttp.Handler())
+		slog.Info("metrics endpoint enabled", "path", "/metrics")
+	}
 
 	// Serve static frontend files if the directory exists (production mode)
 	staticDir := os.Getenv("STATIC_DIR")

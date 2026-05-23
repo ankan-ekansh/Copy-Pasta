@@ -153,13 +153,14 @@ Replace `log.Printf` with Go stdlib `log/slog` (available since Go 1.21, we're o
 
 ### Step 5: Prometheus Metrics
 
-**New dependency:** `github.com/prometheus/client_golang`
+**New dependency:** `github.com/prometheus/client_golang` v1.23.2
 
 **New files:**
 - `backend/internal/metrics/metrics.go` — define and register all metrics
 - `backend/internal/middleware/metrics.go` — HTTP metrics middleware
+- `backend/internal/store/instrumented.go` — Store decorator for DB metrics
 
-**Metrics exposed at `GET /metrics`:**
+**Metrics exposed at `GET /metrics` (opt-in via `EXPOSE_METRICS=true`):**
 
 | Metric | Type | Labels | Description |
 |--------|------|--------|-------------|
@@ -173,26 +174,39 @@ Replace `log.Printf` with Go stdlib `log/slog` (available since Go 1.21, we're o
 
 > **Note:** The `route` label uses the registered route pattern (e.g., `/api/pastas/{id}`), **not** the raw URL path. This prevents unbounded cardinality from dynamic path segments. Chi's `RouteContext` provides the pattern at middleware level.
 
+**Endpoint security:**
+- `/metrics` is **opt-in** — requires `EXPOSE_METRICS=true` env var to mount the handler
+- Internal instrumentation (middleware, store decorator) runs regardless — the flag only controls HTTP endpoint exposure
+- In production (Azure), Prometheus scrapes via internal DNS; the metrics endpoint is never exposed to the public internet
+- Middleware skips recording metrics for the `/metrics` path itself (avoids inflating counts from Prometheus scrapes)
+
+**DB instrumentation pattern:**
+- `InstrumentedStore` wraps any `Store` implementation (decorator pattern)
+- Records operation name, duration, and success/error status per call
+- `ErrNotFound` is classified as "success" (expected business outcome, not an error)
+- Exposes `Ping()` that delegates to inner store; returns `ErrPingNotSupported` sentinel if inner doesn't implement it (health check maps this to "unknown" status)
+
 **Modified files:**
-- `backend/cmd/server/main.go` — mount `/metrics` endpoint
-- `backend/internal/handler/handler.go` — instrument `Convert` endpoint
-- `backend/internal/store/postgres.go` — instrument DB operations
+- `backend/cmd/server/main.go` — conditionally mount `/metrics` endpoint, wrap store with `NewInstrumented`
+- `backend/internal/handler/handler.go` — instrument `Convert` endpoint with conversion timing
+- `backend/internal/middleware/middleware.go` — add Metrics to middleware chain
 
 ### Step 6: Local Observability Stack (Docker Compose)
 
 **New files:**
 - `infra/prometheus/prometheus.yml` — scrape config
 - `infra/grafana/provisioning/datasources/prometheus.yml` — auto-provision datasource
-- `infra/grafana/provisioning/dashboards/dashboard.yml` — auto-load dashboards
-- `infra/grafana/dashboards/copy-pasta.json` — pre-built dashboard
+- `infra/grafana/provisioning/dashboards/dashboard.yml` — auto-load dashboards from disk
+- `infra/grafana/dashboards/.gitkeep` — placeholder (dashboard JSON added in Step 8)
 
 **Modified files:**
-- `docker-compose.yml` — add `prometheus` + `grafana` services
+- `docker-compose.yml` — add `prometheus` + `grafana` services under `observability` profile
 
 **Docker Compose additions:**
 ```yaml
 prometheus:
   image: prom/prometheus:v2.53.0
+  profiles: [observability]
   volumes:
     - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
   ports:
@@ -200,16 +214,37 @@ prometheus:
 
 grafana:
   image: grafana/grafana:11.1.0
+  profiles: [observability]
   volumes:
     - ./infra/grafana/provisioning:/etc/grafana/provisioning
     - ./infra/grafana/dashboards:/var/lib/grafana/dashboards
   ports:
-    - "3001:3000"  # access locally at http://localhost:3001
+    - "3001:3000"
   environment:
-    - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+    - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-changeme}
+    - GF_AUTH_ANONYMOUS_ENABLED=false
+    - GF_USERS_ALLOW_SIGN_UP=false
 ```
 
-> **Local access:** Grafana is mapped to port 3001 (to avoid conflict with frontend's 3000). Open `http://localhost:3001` and login with the password from your `.env` file (or default `admin`).
+**Usage:**
+```bash
+# Base stack (no observability):
+docker compose up
+
+# With observability (first, add to your .env):
+#   EXPOSE_METRICS=true
+#   GF_SECURITY_ADMIN_PASSWORD=changeme
+docker compose --profile observability up
+```
+
+> **Why profiles?** The base stack (`docker compose up`) works without any `.env` setup. Prometheus and Grafana are opt-in — users explicitly choose to start the observability stack. This avoids breaking the base dev workflow for contributors who don't need metrics.
+
+> **Why EXPOSE_METRICS in .env?** The `/metrics` endpoint is opt-in everywhere (local and production). Users must explicitly enable it in their `.env` when they want Prometheus scraping. This keeps the default secure and avoids accidentally exposing operational data.
+
+> **Why a default password fallback (`:-changeme`) instead of requiring it (`{:?}`):**  
+> Docker Compose interpolates ALL service environment variables regardless of active profiles. Using `${VAR:?msg}` would cause `docker compose config` to fail for every user — even those only running the base stack. This is a Docker Compose limitation. Mitigations: ports bound to `127.0.0.1` (not network-accessible), profile is opt-in, anonymous access disabled.
+
+> **Local access:** Grafana and Prometheus are bound to localhost only (`127.0.0.1:3001`, `127.0.0.1:9090`) — not accessible from the network. Open `http://localhost:3001`, login as `admin` with your `GF_SECURITY_ADMIN_PASSWORD` from `.env`.
 
 ### Step 7: Deploy to Azure (Self-Hosted)
 
@@ -321,8 +356,9 @@ This is intentionally deferred: for a single-service app, Prometheus metrics + r
 |----------|---------|-------------|
 | `LOG_FORMAT` | `json` | `json` or `text` |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
-| `APP_VERSION` | `dev` | Fallback if not injected via `-ldflags "-X main.version=..."` at build time |
-| `GF_SECURITY_ADMIN_PASSWORD` | `admin` (local `.env`) | Grafana admin login — in Azure, stored as Container Apps secret via `secretref:` |
+| `APP_VERSION` | `dev` | Fallback if not injected via `-ldflags "-X ...handler.version=..."` at build time |
+| `EXPOSE_METRICS` | (not set = disabled) | Set to `true` to mount the `/metrics` HTTP endpoint for Prometheus scraping |
+| `GF_SECURITY_ADMIN_PASSWORD` | `changeme` (local) | Grafana admin login — in Azure, stored as Container Apps secret via `secretref:` |
 
 ---
 
@@ -343,8 +379,15 @@ This is intentionally deferred: for a single-service app, Prometheus metrics + r
 
 | Environment | Where password lives | How it's set |
 |-------------|---------------------|--------------|
-| **Local dev** | `.env` file (git-ignored) | `GF_SECURITY_ADMIN_PASSWORD=yourpassword` — docker-compose reads `.env` automatically |
+| **Local dev** | `.env` file (git-ignored) | `GF_SECURITY_ADMIN_PASSWORD=yourpassword` — docker-compose reads `.env` automatically. Default is `changeme`. |
 | **Azure prod** | Container Apps secret (encrypted at rest) | `az containerapp secret set` → mapped via `secretref:` to env var |
+
+### Metrics Endpoint Exposure
+
+| Environment | Strategy |
+|-------------|----------|
+| **Local dev** | Set `EXPOSE_METRICS=true` in `.env` when running with `--profile observability` |
+| **Azure prod** | Backend exposes `/metrics` only on internal ingress; Prometheus scrapes internally. Never exposed to public internet. |
 
 ### Current vs Production-Grade
 

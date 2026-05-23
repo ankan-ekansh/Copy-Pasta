@@ -74,3 +74,24 @@ func TestGetSessionID_EmptyContext(t *testing.T) {
 		t.Errorf("expected empty session ID from bare context, got %q", sid)
 	}
 }
+
+func TestSession_SkipsMetricsPath(t *testing.T) {
+	handler := Session(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sid := GetSessionID(r.Context())
+		if sid != "" {
+			t.Errorf("expected no session ID for /metrics, got %q", sid)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	// Should not set a session cookie
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == cookieName {
+			t.Error("session cookie should not be set for /metrics")
+		}
+	}
+}

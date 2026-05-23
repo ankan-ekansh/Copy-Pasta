@@ -208,19 +208,19 @@ CREATE INDEX idx_pastas_public ON pastas(is_public, created_at);
 ---
 
 ## Phase 4: Observability — "See What's Happening"
-**Status**: Planned  
+**Status**: In Progress  
 **Goal**: Structured logging, metrics, dashboards, and request correlation (X-Request-ID).
 
 | Task | Status |
 |------|--------|
-| Structured logging (slog) | ⬜ |
-| Request ID middleware | ⬜ |
-| Rich health endpoint (DB check, version, uptime) | ⬜ |
-| Prometheus metrics (`/metrics`) | ⬜ |
-| Local observability stack (docker-compose) | ⬜ |
+| Structured logging (slog) | ✅ PR #15 |
+| Request ID middleware | ✅ PR #15 |
+| Rich health endpoint (DB check, version, uptime) | ✅ PR #15 |
+| Prometheus metrics (`/metrics`) | ✅ PR #16 |
+| Local observability stack (docker-compose) | ✅ PR #16 |
 | Production Prometheus + Grafana | ⬜ |
 | Pre-built Grafana dashboard | ⬜ |
-| Documentation | ⬜ |
+| Documentation | ✅ PR #14 |
 
 See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation plan.
 

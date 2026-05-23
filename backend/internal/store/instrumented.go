@@ -60,6 +60,10 @@ func (s *InstrumentedStore) Close() {
 	s.inner.Close()
 }
 
+// ErrPingNotSupported is returned by InstrumentedStore.Ping when the wrapped
+// store does not implement pinging. Health checks should map this to "unknown".
+var ErrPingNotSupported = errors.New("store does not support ping")
+
 // Ping delegates to the inner store if it implements pinging.
 func (s *InstrumentedStore) Ping(ctx context.Context) error {
 	type pinger interface {
@@ -68,7 +72,7 @@ func (s *InstrumentedStore) Ping(ctx context.Context) error {
 	if p, ok := s.inner.(pinger); ok {
 		return p.Ping(ctx)
 	}
-	return errors.New("store does not support ping")
+	return ErrPingNotSupported
 }
 
 func (s *InstrumentedStore) record(operation string, start time.Time, err error) {

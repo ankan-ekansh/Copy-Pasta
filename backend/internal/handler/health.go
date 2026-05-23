@@ -2,10 +2,13 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/store"
 )
 
 var startTime = time.Now()
@@ -79,6 +82,9 @@ func checkDB(ctx context.Context, s interface{}) *checkResult {
 	latency := time.Since(start).Milliseconds()
 
 	if err != nil {
+		if errors.Is(err, store.ErrPingNotSupported) {
+			return &checkResult{Status: "unknown"}
+		}
 		slog.Error("health check: database ping failed", "error", err, "latency_ms", latency)
 		return &checkResult{Status: "down", LatencyMs: latency}
 	}

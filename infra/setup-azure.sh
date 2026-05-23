@@ -29,8 +29,18 @@ IMAGE_TAG="latest"
 PG_SERVER_NAME="pg-sv-copy-pasta"
 PG_ADMIN_USER="copypasta"
 PG_DB_NAME="copypasta"
-STORAGE_ACCOUNT="${STORAGE_ACCOUNT:-copypasta$(echo "${RESOURCE_GROUP}" | tr '[:upper:]' '[:lower:]' | tr -cd '[:lower:][:digit:]')}"
-STORAGE_ACCOUNT="${STORAGE_ACCOUNT:0:24}"  # max 24 chars, must be globally unique
+STORAGE_ACCOUNT="${STORAGE_ACCOUNT:-}"
+if [[ -z "$STORAGE_ACCOUNT" ]]; then
+  # Derive a unique name: prefix + short hash of subscription ID for global uniqueness
+  SUB_HASH=$(az account show --query id -o tsv 2>/dev/null | md5sum | cut -c1-6)
+  STORAGE_ACCOUNT="copypasta${SUB_HASH}"
+fi
+# Validate Azure storage account naming rules (3-24 chars, lowercase alphanumeric only)
+if [[ ${#STORAGE_ACCOUNT} -lt 3 || ${#STORAGE_ACCOUNT} -gt 24 ]] || ! [[ "$STORAGE_ACCOUNT" =~ ^[a-z0-9]+$ ]]; then
+  echo "❌ ERROR: STORAGE_ACCOUNT='$STORAGE_ACCOUNT' is invalid."
+  echo "   Must be 3-24 chars, lowercase letters and digits only."
+  exit 1
+fi
 
 echo "🍝 Copy-Pasta Azure Infrastructure Setup"
 echo "========================================="
@@ -333,7 +343,7 @@ if az containerapp show --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GRO
     --name "$PROMETHEUS_APP" \
     --resource-group "$RESOURCE_GROUP" \
     --image "$PROMETHEUS_IMAGE" \
-    --set-env-vars "METRICS_TOKEN=$METRICS_TOKEN" \
+    --set-env-vars "METRICS_TOKEN=$METRICS_TOKEN" "SCRAPE_TARGET=$APP_URL" \
     --output none
 else
   echo "  📈 Creating Prometheus Container App (internal only)..."
@@ -350,7 +360,7 @@ else
     --registry-server "$ACR_LOGIN_SERVER" \
     --registry-username "$ACR_USERNAME" \
     --registry-password "$ACR_PASSWORD" \
-    --env-vars "METRICS_TOKEN=$METRICS_TOKEN" \
+    --env-vars "METRICS_TOKEN=$METRICS_TOKEN" "SCRAPE_TARGET=$APP_URL" \
     --output none
 fi
 

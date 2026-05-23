@@ -117,9 +117,39 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 - `PATCH /api/pastas/:id` — set is_public (atomic ownership check)
 
 ### Middleware: `backend/internal/middleware/middleware.go`
-- Chi's built-in Logger and Recoverer
-- CORS with origin validation, credentials support, wildcard+credentials guard
-- Session cookie middleware: sets `copy-pasta-session` UUID cookie (HttpOnly, SameSite=Lax, Secure via TLS/X-Forwarded-Proto)
+Global middleware chain (in order):
+1. **CORS** — Origin validation, credentials support, wildcard+credentials guard
+2. **RealIP** (`chi/middleware.RealIP`) — Conditional: only enabled when `TRUSTED_PROXY=true`. Extracts client IP from `X-Forwarded-For`/`X-Real-IP` headers.
+3. **RequestID** — Generates/propagates `X-Request-ID` header
+4. **Metrics** — Records HTTP request count and duration (Prometheus histograms)
+5. **RequestLog** — Structured access logging via `slog`
+6. **Recoverer** — Panic recovery
+7. **Session** — Sets `copy-pasta-session` UUID cookie (HttpOnly, SameSite=Lax, Secure via TLS/X-Forwarded-Proto)
+
+**RateLimitAPI** is applied only to `/api` routes (via chi `Route` group), not to static assets or `/metrics`.
+
+### Rate Limiting: `backend/internal/middleware/ratelimit.go`
+- **RateLimitConvert()** — Applied per-route on `POST /api/convert`. 10 req/min per IP (configurable via `RATE_LIMIT_CONVERT`).
+- **RateLimitAPI()** — Applied to general `/api` routes (excludes `/api/convert` which has its own limiter). 100 req/min per IP (configurable via `RATE_LIMIT_API`).
+- IP keying is conditional on `TRUSTED_PROXY`:
+  - `TRUSTED_PROXY=true` → uses `httprate.WithKeyByRealIP()` (reads X-Real-IP/X-Forwarded-For)
+  - `TRUSTED_PROXY` unset/false → uses `httprate.WithKeyByIP()` (reads RemoteAddr directly)
+- `Retry-After` header is derived from `rateLimitWindow` (currently 60s).
+- Returns 429 with JSON `{"error": "rate limit exceeded, try again later"}`.
+
+**Trust model:**
+- **Docker Compose** (`TRUSTED_PROXY=true`): Backend port is not published — only reachable via nginx (port 3000). Nginx overwrites `X-Real-IP` and `X-Forwarded-For` with `$remote_addr`, so client-supplied values are discarded. RealIP middleware + `WithKeyByRealIP()` are safe.
+- **Azure** (`TRUSTED_PROXY=true`, set by `infra/setup-azure.sh`): Container Apps ingress overwrites `X-Forwarded-For` at the edge. The env var is set alongside `DATABASE_URL` during provisioning.
+- **Local dev** (`make dev-backend`, `TRUSTED_PROXY` unset): RealIP middleware is skipped, rate limiting uses `RemoteAddr` directly. No spoofing possible.
+
+### Metrics: `backend/internal/metrics/`
+- Prometheus counters and histograms (no namespace prefix)
+- Metric names: `conversions_total`, `conversion_duration_seconds`, `http_requests_total`, `http_request_duration_seconds`, `db_operation_duration_seconds`
+- `/metrics` endpoint gated by `EXPOSE_METRICS=true` (opt-in)
+
+### InstrumentedStore: `backend/internal/store/instrumented.go`
+- Decorator wrapping any `Store` implementation to record `db_operation_duration_seconds`
+- Exposes `Ping()` via type assertion on inner store (returns `ErrPingNotSupported` if inner lacks it)
 
 ### Store: `backend/internal/store/`
 - `Store` interface: `Save`, `Get`, `ListBySession`, `DeleteByOwner`, `SetPublicByOwner`, `Close`
@@ -184,6 +214,7 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 | `make dev-frontend` | Vite dev server only |
 | `make build` | Build both projects |
 | `make docker-up` | Build & start Docker Compose |
+| `make docker-up-obs` | Build & start with observability (Prometheus + Grafana) |
 | `make docker-down` | Stop Docker Compose |
 | `make test` | Run Go tests |
 | `make lint` | Run linters (go vet + eslint) |
@@ -209,8 +240,7 @@ Or use: `make dev` (runs both in parallel)
 ### Option 2: Docker Compose
 ```bash
 make docker-up
-# Frontend at http://localhost:3000
-# Backend at http://localhost:8080
+# App at http://localhost:3000 (nginx proxies /api to backend internally)
 ```
 
 ---

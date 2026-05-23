@@ -56,6 +56,8 @@ Copy-Pasta is a Go (backend) + React (frontend) web app that converts meme image
 
 - **Metrics labels:** Never use raw URL paths as Prometheus labels (unbounded cardinality). Use route patterns from `chi.RouteContext().RoutePattern()`.
 - **Middleware:** Always nil-guard `chi.RouteContext()` — can be nil outside the router.
+- **Rate limiting:** Scoped to `/api` routes only (via chi Route group). `/api/convert` has its own limiter; general API routes share a separate one.
+- **RealIP trust:** `chi/middleware.RealIP` and `WithKeyByRealIP()` are only active when `TRUSTED_PROXY=true`. Without it, `RemoteAddr` is used directly (safe for bare dev server).
 - **Store pattern:** Use interfaces for persistence. The `InstrumentedStore` decorator wraps any `Store` implementation to add metrics without modifying the original.
 - **Health endpoint:** Report "unknown" (not "down") when a capability isn't available or testable.
 - **Docker Compose:** 
@@ -109,6 +111,7 @@ Every code change should trigger a doc check:
 - Do file paths in docs point to files that exist?
 - Do code snippets in docs match the actual implementation?
 - Do usage instructions (commands, credentials, ports) reflect current reality?
+- Does `docs/IMPLEMENTATION.md` reflect new middleware, handlers, or architectural components?
 
 ### 5. Self-Review Before Pushing
 
@@ -167,5 +170,7 @@ make docker-down
 | `docker-compose.yml` | Local dev stack |
 | `infra/` | Prometheus, Grafana, Azure deployment configs |
 | `docs/PLAN.md` | Phase-by-phase roadmap |
+| `docs/IMPLEMENTATION.md` | Detailed implementation guide (algorithms, API reference, design decisions) |
 | `docs/OBSERVABILITY.md` | Observability architecture and decisions |
+| `docs/ARCHITECTURE.md` | System overview, footguns, module boundaries |
 

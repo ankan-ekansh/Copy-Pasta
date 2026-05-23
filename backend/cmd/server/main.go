@@ -11,13 +11,16 @@ import (
 
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/handler"
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/logging"
+	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/metrics"
 	appmiddleware "github.com/ankan-ekansh/Copy-Pasta/backend/internal/middleware"
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/store"
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
 	logging.Init()
+	metrics.Register()
 
 	r := chi.NewRouter()
 	appmiddleware.Register(r)
@@ -33,6 +36,7 @@ func main() {
 			slog.Warn("failed to connect to database, persistence disabled", "error", err)
 		} else {
 			defer s.Close()
+			s = store.NewInstrumented(s)
 			slog.Info("connected to database")
 		}
 	} else {
@@ -46,6 +50,7 @@ func main() {
 	r.Get("/api/pastas/{id}", h.GetPasta)
 	r.Delete("/api/pastas/{id}", h.DeletePasta)
 	r.Patch("/api/pastas/{id}", h.SetPublic)
+	r.Handle("/metrics", promhttp.Handler())
 
 	// Serve static frontend files if the directory exists (production mode)
 	staticDir := os.Getenv("STATIC_DIR")

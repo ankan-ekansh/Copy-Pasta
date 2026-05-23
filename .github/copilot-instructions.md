@@ -49,6 +49,11 @@ Copy-Pasta is a Go (backend) + React (frontend) web app that converts meme image
   1. Push the code fix
   2. Reply to each comment on GitHub explaining what was changed and why
   3. Resolve the conversation thread
+- **Copilot code review:** After every push to a PR branch, request Copilot review:
+  ```bash
+  gh api repos/ankan-ekansh/Copy-Pasta/pulls/{PR_NUMBER}/requested_reviewers \
+    -X POST -f 'reviewers[]=copilot-pull-request-reviewer[bot]'
+  ```
 
 ---
 

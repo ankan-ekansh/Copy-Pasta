@@ -15,7 +15,7 @@ type Action =
   | { type: 'toggle-public'; id: string; isPublic: boolean }
   | { type: 'delete-error'; message: string }
   | { type: 'publish-error'; message: string }
-  | { type: 'clear-delete-error' };
+  | { type: 'clear-errors' };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -26,7 +26,7 @@ function reducer(state: State, action: Action): State {
     case 'toggle-public': return { ...state, pastas: state.pastas.map((p) => p.id === action.id ? { ...p, is_public: action.isPublic } : p) };
     case 'delete-error': return { ...state, deleteError: action.message };
     case 'publish-error': return { ...state, publishError: action.message };
-    case 'clear-delete-error': return { ...state, deleteError: '', publishError: '' };
+    case 'clear-errors': return { ...state, deleteError: '', publishError: '' };
     default: return state;
   }
 }
@@ -45,7 +45,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
 
   const handleDelete = async (id: string) => {
     try {
-      dispatch({ type: 'clear-delete-error' });
+      dispatch({ type: 'clear-errors' });
       await deletePasta(id);
       dispatch({ type: 'remove', id });
     } catch (err) {
@@ -59,7 +59,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
   };
 
   const handleTogglePublic = async (id: string, currentlyPublic: boolean) => {
-    dispatch({ type: 'clear-delete-error' });
+    dispatch({ type: 'clear-errors' });
     try {
       await setPublic(id, !currentlyPublic);
       dispatch({ type: 'toggle-public', id, isPublic: !currentlyPublic });

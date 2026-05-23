@@ -5,6 +5,8 @@ interface GalleryProps {
   onBack: () => void;
 }
 
+const PAGE_SIZE = 20;
+
 export function Gallery({ onBack }: GalleryProps) {
   const [pastas, setPastas] = useState<GalleryPasta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -12,19 +14,18 @@ export function Gallery({ onBack }: GalleryProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const limit = 20;
 
   const loadGallery = async (pageOffset: number): Promise<boolean> => {
     setLoading(true);
     setError(null);
     try {
-      const items = await listGallery(limit, pageOffset);
+      const items = await listGallery(PAGE_SIZE, pageOffset);
       if (pageOffset === 0) {
         setPastas(items);
       } else {
         setPastas(prev => [...prev, ...items]);
       }
-      setHasMore(items.length === limit);
+      setHasMore(items.length === PAGE_SIZE);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load gallery');
@@ -36,10 +37,10 @@ export function Gallery({ onBack }: GalleryProps) {
 
   useEffect(() => {
     let ignore = false;
-    listGallery(limit, 0).then(items => {
+    listGallery(PAGE_SIZE, 0).then(items => {
       if (!ignore) {
         setPastas(items);
-        setHasMore(items.length === limit);
+        setHasMore(items.length === PAGE_SIZE);
         setLoading(false);
       }
     }).catch(err => {
@@ -68,7 +69,7 @@ export function Gallery({ onBack }: GalleryProps) {
   };
 
   const handleLoadMore = async () => {
-    const newOffset = offset + limit;
+    const newOffset = offset + PAGE_SIZE;
     const success = await loadGallery(newOffset);
     if (success) setOffset(newOffset);
   };
@@ -122,6 +123,8 @@ export function Gallery({ onBack }: GalleryProps) {
                   type="button"
                   className={`gallery-like-btn ${pasta.liked_by_me ? 'liked' : ''}`}
                   onClick={() => handleLike(pasta.id, pasta.liked_by_me)}
+                  aria-pressed={pasta.liked_by_me}
+                  aria-label={`${pasta.liked_by_me ? 'Unlike' : 'Like'} (${pasta.like_count} likes)`}
                   title={pasta.liked_by_me ? 'Unlike' : 'Like'}
                 >
                   {pasta.liked_by_me ? '❤️' : '🤍'} {pasta.like_count}

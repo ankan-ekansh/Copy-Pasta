@@ -82,7 +82,7 @@ function App() {
             nerdy text art.
           </p>
         </div>
-        <div className="hero-badges" aria-label="App features">
+        <div className="hero-badges" aria-label="App features and navigation">
           <span>📋 Paste friendly</span>
           <span>🎚️ Width controls</span>
           <span>🌗 Invert mode</span>

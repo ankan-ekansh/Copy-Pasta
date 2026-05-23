@@ -3,19 +3,22 @@ package main
 import (
 	"context"
 	"io/fs"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/handler"
+	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/logging"
 	appmiddleware "github.com/ankan-ekansh/Copy-Pasta/backend/internal/middleware"
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/store"
 	"github.com/go-chi/chi/v5"
 )
 
 func main() {
+	logging.Init()
+
 	r := chi.NewRouter()
 	appmiddleware.Register(r)
 
@@ -27,13 +30,13 @@ func main() {
 		var err error
 		s, err = store.NewPostgres(ctx, dbURL)
 		if err != nil {
-			log.Printf("WARNING: failed to connect to database: %v — persistence disabled", err)
+			slog.Warn("failed to connect to database, persistence disabled", "error", err)
 		} else {
 			defer s.Close()
-			log.Println("connected to database")
+			slog.Info("connected to database")
 		}
 	} else {
-		log.Println("DATABASE_URL not set, persistence disabled")
+		slog.Info("DATABASE_URL not set, persistence disabled")
 	}
 
 	h := handler.New(handler.WithStore(s))
@@ -50,7 +53,7 @@ func main() {
 		staticDir = "static"
 	}
 	if info, err := os.Stat(staticDir); err == nil && info.IsDir() {
-		log.Printf("serving static files from %s", staticDir)
+		slog.Info("serving static files", "dir", staticDir)
 		spaHandler := spaFileServer(os.DirFS(staticDir))
 		r.NotFound(spaHandler)
 	}
@@ -61,10 +64,11 @@ func main() {
 	}
 
 	addr := ":" + port
-	log.Printf("starting server on %s", addr)
+	slog.Info("starting server", "addr", addr)
 
 	if err := http.ListenAndServe(addr, r); err != nil {
-		log.Fatalf("server failed: %v", err)
+		slog.Error("server failed", "error", err)
+		os.Exit(1)
 	}
 }
 

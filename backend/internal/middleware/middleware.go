@@ -12,7 +12,8 @@ import (
 
 func Register(r chi.Router) {
 	r.Use(CORS())
-	r.Use(chimiddleware.Logger)
+	r.Use(RequestID)
+	r.Use(RequestLog)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(Session)
 }
@@ -44,8 +45,8 @@ func CORS() func(http.Handler) http.Handler {
 	return cors.Handler(cors.Options{
 		AllowedOrigins:   origins,
 		AllowedMethods:   []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID"},
+		ExposedHeaders:   []string{"Link", "X-Request-ID"},
 		AllowCredentials: allowCreds,
 		MaxAge:           300,
 	})

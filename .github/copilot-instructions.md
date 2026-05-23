@@ -37,11 +37,11 @@ Copy-Pasta is a Go (backend) + React (frontend) web app that converts meme image
 ### Git Workflow
 
 - **Never commit directly to `main`** — always use a branch + PR
-- **Branch naming:** `type/short-description` where type is one of:
-  - `feat/` — new features or enhancements
-  - `docs/` — documentation-only changes
-  - `chore/` — maintenance, config, tooling
-  - `infra/` — infrastructure, deployment, CI/CD
+- **Branch naming:** `type/short-description` — examples: `feat/rate-limiter`, `docs/plan-phase5`
+  - `feat` — new features or enhancements
+  - `docs` — documentation-only changes
+  - `chore` — maintenance, config, tooling
+  - `infra` — infrastructure, deployment, CI/CD
 - **Planning and execution are separate PRs:**
   1. First PR: documentation updates — `docs/PLAN.md`, `docs/ARCHITECTURE.md` (design decisions, options comparison)
   2. Second PR: implementation (code changes, after plan PR is merged)

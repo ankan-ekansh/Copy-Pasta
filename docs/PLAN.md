@@ -270,7 +270,7 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 | Shared IP (NAT/VPN) hits limit | 10/min is generous; tunable via env var |
 | Attacker rotates IPs | Damage ceiling is low (max 3 replicas × CPU cap) |
 | State lost on restart | Acceptable — no persistent abuse tracking needed |
-| X-Forwarded-For spoofing | httprate uses rightmost non-private IP; Azure sets real client IP |
+| X-Forwarded-For spoofing | Use `chi/middleware.RealIP` before rate limiter in chain; Azure Container Apps sets `X-Forwarded-For` at ingress. Local dev falls back to `r.RemoteAddr`. |
 
 ---
 
@@ -300,7 +300,6 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 | Share links with OG meta tags | ⬜ |
 | Like / upvote system | ⬜ |
 | Leaderboard: most liked | ⬜ |
-| Rate limiting middleware | ⬜ |
 
 ---
 
@@ -310,7 +309,6 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 
 | Task | Status |
 |------|--------|
-| Rate limiting middleware | ⬜ |
 | Image size/format validation hardening | ⬜ |
 | Graceful shutdown | ⬜ |
 | Database migrations (golang-migrate) | ⬜ |

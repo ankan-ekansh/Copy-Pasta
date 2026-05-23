@@ -29,6 +29,20 @@ IMAGE_TAG="latest"
 PG_SERVER_NAME="pg-sv-copy-pasta"
 PG_ADMIN_USER="copypasta"
 PG_DB_NAME="copypasta"
+STORAGE_ACCOUNT="${STORAGE_ACCOUNT:-}"
+if [[ -z "$STORAGE_ACCOUNT" ]]; then
+  # Derive a unique name: prefix + short hash of subscription ID for global uniqueness
+  SUB_ID=$(az account show --query id -o tsv)
+  # Use openssl for portability (md5sum not available on macOS)
+  SUB_HASH=$(echo -n "$SUB_ID" | openssl dgst -md5 | awk '{print $NF}' | cut -c1-6)
+  STORAGE_ACCOUNT="copypasta${SUB_HASH}"
+fi
+# Validate Azure storage account naming rules (3-24 chars, lowercase alphanumeric only)
+if [[ ${#STORAGE_ACCOUNT} -lt 3 || ${#STORAGE_ACCOUNT} -gt 24 ]] || ! [[ "$STORAGE_ACCOUNT" =~ ^[a-z0-9]+$ ]]; then
+  echo "❌ ERROR: STORAGE_ACCOUNT='$STORAGE_ACCOUNT' is invalid."
+  echo "   Must be 3-24 chars, lowercase letters and digits only."
+  exit 1
+fi
 
 echo "🍝 Copy-Pasta Azure Infrastructure Setup"
 echo "========================================="
@@ -38,9 +52,9 @@ echo "ACR:            $ACR_NAME.azurecr.io"
 echo ""
 
 # --- Step 0: Register required resource providers ---
-PROVIDERS=("Microsoft.App" "Microsoft.OperationalInsights" "Microsoft.ContainerRegistry" "Microsoft.DBforPostgreSQL")
+PROVIDERS=("Microsoft.App" "Microsoft.OperationalInsights" "Microsoft.ContainerRegistry" "Microsoft.DBforPostgreSQL" "Microsoft.Storage")
 for provider in "${PROVIDERS[@]}"; do
-  state=$(az provider show --namespace "$provider" --query "registrationState" -o tsv 2>/dev/null || echo "NotRegistered")
+  state=$(az provider show --namespace "$provider" --query "registrationState" -o tsv)
   if [ "$state" != "Registered" ]; then
     echo "🔧 Registering resource provider $provider..."
     az provider register -n "$provider" --wait
@@ -51,7 +65,7 @@ done
 echo ""
 
 # --- Step 1: Resource Group ---
-if az group show --name "$RESOURCE_GROUP" &>/dev/null; then
+if [ "$(az group exists --name "$RESOURCE_GROUP")" = "true" ]; then
   echo "📦 Resource group '$RESOURCE_GROUP' already exists — skipping."
 else
   echo "📦 Creating resource group..."
@@ -62,7 +76,7 @@ else
 fi
 
 # --- Step 2: Azure Container Registry ---
-if az acr show --name "$ACR_NAME" &>/dev/null; then
+if az acr show --name "$ACR_NAME" >/dev/null 2>&1; then
   echo "🐳 Container registry '$ACR_NAME' already exists — skipping."
 else
   echo "🐳 Creating container registry..."
@@ -82,7 +96,7 @@ ACR_PASSWORD=$(az acr credential show --name "$ACR_NAME" --query "passwords[0].v
 echo "   Registry: $ACR_LOGIN_SERVER"
 
 # --- Step 3: Container Apps Environment ---
-if az containerapp env show --name "$CONTAINER_APP_ENV" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+if az containerapp env show --name "$CONTAINER_APP_ENV" --resource-group "$RESOURCE_GROUP" >/dev/null 2>&1; then
   echo "🌐 Container Apps environment '$CONTAINER_APP_ENV' already exists — skipping."
 else
   echo "🌐 Creating Container Apps environment..."
@@ -94,7 +108,7 @@ else
 fi
 
 # --- Step 4: Container App (initial deployment with placeholder) ---
-if az containerapp show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+if az containerapp show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" >/dev/null 2>&1; then
   echo "🚀 Container App '$CONTAINER_APP_NAME' already exists — skipping."
 else
   echo "🚀 Creating Container App..."
@@ -122,7 +136,7 @@ APP_URL=$(az containerapp show \
   --query "properties.configuration.ingress.fqdn" -o tsv)
 
 # --- Step 5: PostgreSQL Flexible Server ---
-if az postgres flexible-server show --name "$PG_SERVER_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+if az postgres flexible-server show --name "$PG_SERVER_NAME" --resource-group "$RESOURCE_GROUP" >/dev/null 2>&1; then
   echo "🐘 PostgreSQL server '$PG_SERVER_NAME' already exists — skipping."
 else
   # Require password from environment
@@ -259,10 +273,233 @@ else
   fi
 fi
 
+# =============================================================================
+# Step 7: Observability — Prometheus + Grafana Container Apps
+# =============================================================================
+PROMETHEUS_APP="prometheus-copy-pasta"
+GRAFANA_APP="grafana-copy-pasta"
+PROMETHEUS_IMAGE="$ACR_LOGIN_SERVER/prometheus-copy-pasta:$IMAGE_TAG"
+GRAFANA_IMAGE="$ACR_LOGIN_SERVER/grafana-copy-pasta:$IMAGE_TAG"
+
+echo ""
+echo "📊 Setting up observability stack..."
+
+# Ensure the main app exposes /metrics for Prometheus to scrape (token-protected).
+# Token stored as Container Apps secret; reused if already exists.
+echo "  Enabling metrics endpoint on main app..."
+# Check if metrics token secret already exists (avoid rotation/downtime)
+# Capture list output separately so CLI failures (auth/timeout) fail fast via set -e
+SECRET_LIST=$(az containerapp secret list --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+  --query "[?name=='metrics-token'].name" -o tsv)
+if echo "$SECRET_LIST" | grep -q metrics-token; then
+  EXISTING_TOKEN=$(az containerapp secret show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+    --secret-name metrics-token --query value -o tsv)
+else
+  EXISTING_TOKEN=""
+fi
+if [[ -n "$EXISTING_TOKEN" ]]; then
+  METRICS_TOKEN="$EXISTING_TOKEN"
+  echo "  Reusing existing metrics token."
+else
+  METRICS_TOKEN=$(openssl rand -hex 16)
+  az containerapp secret set --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+    --secrets "metrics-token=$METRICS_TOKEN" --output none
+fi
+az containerapp update \
+  --name "$CONTAINER_APP_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
+  --set-env-vars "EXPOSE_METRICS=true" "METRICS_TOKEN=secretref:metrics-token" \
+  --output none
+
+# Create Azure Files share for Prometheus data persistence
+PROM_SHARE="prometheus-data"
+echo "  Setting up persistent storage for Prometheus..."
+if ! az storage account show --name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" >/dev/null 2>&1; then
+  # Verify name is available globally before attempting create
+  NAME_AVAILABLE=$(az storage account check-name --name "$STORAGE_ACCOUNT" --query nameAvailable -o tsv)
+  if [ "$NAME_AVAILABLE" != "true" ]; then
+    echo "❌ ERROR: Storage account name '$STORAGE_ACCOUNT' is taken (exists in another resource group/subscription)."
+    echo "   Set STORAGE_ACCOUNT=<unique-name> and re-run."
+    exit 1
+  fi
+  az storage account create \
+    --name "$STORAGE_ACCOUNT" \
+    --resource-group "$RESOURCE_GROUP" \
+    --location "$LOCATION" \
+    --sku Standard_LRS \
+    --output none
+fi
+STORAGE_KEY=$(az storage account keys list --account-name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" --query "[0].value" -o tsv)
+
+# Create file share (idempotent — succeeds if already exists)
+if ! az storage share show --name "$PROM_SHARE" --account-name "$STORAGE_ACCOUNT" --account-key "$STORAGE_KEY" >/dev/null 2>&1; then
+  az storage share create --name "$PROM_SHARE" --account-name "$STORAGE_ACCOUNT" --account-key "$STORAGE_KEY" --output none
+fi
+
+# Register storage in Container Apps environment (idempotent — set is an upsert)
+az containerapp env storage set \
+  --name "$CONTAINER_APP_ENV" \
+  --resource-group "$RESOURCE_GROUP" \
+  --storage-name promdata \
+  --azure-file-account-name "$STORAGE_ACCOUNT" \
+  --azure-file-account-key "$STORAGE_KEY" \
+  --azure-file-share-name "$PROM_SHARE" \
+  --access-mode ReadWrite \
+  --output none
+
+# Build and push Prometheus image
+echo "  Building Prometheus image..."
+docker build -t "$PROMETHEUS_IMAGE" -f infra/prometheus/Dockerfile \
+  --build-arg CONFIG_FILE=prometheus-azure.yml \
+  infra/prometheus/
+az acr login --name "$ACR_NAME" --output none
+docker push "$PROMETHEUS_IMAGE"
+
+# Build and push Grafana image
+echo "  Building Grafana image..."
+docker build -t "$GRAFANA_IMAGE" \
+  --build-arg PROVISIONING_DIR=provisioning-azure \
+  infra/grafana/
+docker push "$GRAFANA_IMAGE"
+
+# Deploy Prometheus (internal only, with persistent storage)
+if az containerapp show --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GROUP" >/dev/null 2>&1; then
+  echo "  📈 Prometheus app '$PROMETHEUS_APP' already exists — updating image."
+  az containerapp secret set --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GROUP" \
+    --secrets "metrics-token=$METRICS_TOKEN" --output none
+  az containerapp update \
+    --name "$PROMETHEUS_APP" \
+    --resource-group "$RESOURCE_GROUP" \
+    --image "$PROMETHEUS_IMAGE" \
+    --set-env-vars "METRICS_TOKEN=secretref:metrics-token" "SCRAPE_TARGET=$APP_URL" \
+    --output none
+else
+  echo "  📈 Creating Prometheus Container App (internal only)..."
+  az containerapp create \
+    --name "$PROMETHEUS_APP" \
+    --resource-group "$RESOURCE_GROUP" \
+    --environment "$CONTAINER_APP_ENV" \
+    --image "$PROMETHEUS_IMAGE" \
+    --target-port 9090 \
+    --ingress internal \
+    --min-replicas 1 \
+    --max-replicas 1 \
+    --cpu 0.25 --memory 0.5Gi \
+    --registry-server "$ACR_LOGIN_SERVER" \
+    --registry-username "$ACR_USERNAME" \
+    --registry-password "$ACR_PASSWORD" \
+    --secrets "metrics-token=$METRICS_TOKEN" \
+    --env-vars "METRICS_TOKEN=secretref:metrics-token" "SCRAPE_TARGET=$APP_URL" \
+    --output none
+fi
+
+# Ensure persistent volume is attached (idempotent — runs on both create and update)
+# Include env vars, resources, and scale in template to avoid wiping them during YAML patch
+echo "  Attaching persistent storage to Prometheus..."
+az containerapp update \
+  --name "$PROMETHEUS_APP" \
+  --resource-group "$RESOURCE_GROUP" \
+  --yaml /dev/stdin <<EOF
+properties:
+  template:
+    scale:
+      minReplicas: 1
+      maxReplicas: 1
+    volumes:
+      - name: promdata
+        storageName: promdata
+        storageType: AzureFile
+    containers:
+      - name: $PROMETHEUS_APP
+        image: $PROMETHEUS_IMAGE
+        resources:
+          cpu: 0.25
+          memory: 0.5Gi
+        env:
+          - name: METRICS_TOKEN
+            secretRef: metrics-token
+          - name: SCRAPE_TARGET
+            value: $APP_URL
+        volumeMounts:
+          - volumeName: promdata
+            mountPath: /prometheus
+EOF
+
+# Deploy Grafana (external, password-protected)
+# Get Prometheus internal FQDN for Grafana datasource (with retry)
+# Internal ingress in Container Apps uses HTTPS on port 443
+echo "  Waiting for Prometheus FQDN..."
+PROMETHEUS_FQDN=""
+for i in 1 2 3 4 5; do
+  PROMETHEUS_FQDN=$(az containerapp show --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GROUP" \
+    --query "properties.configuration.ingress.fqdn" -o tsv)
+  if [[ -n "$PROMETHEUS_FQDN" ]]; then break; fi
+  sleep 5
+done
+if [[ -z "$PROMETHEUS_FQDN" ]]; then
+  echo "❌ ERROR: Could not retrieve Prometheus internal FQDN after 25s."
+  echo "   Check that '$PROMETHEUS_APP' has internal ingress enabled."
+  exit 1
+fi
+PROMETHEUS_URL="https://$PROMETHEUS_FQDN"
+
+if az containerapp show --name "$GRAFANA_APP" --resource-group "$RESOURCE_GROUP" >/dev/null 2>&1; then
+  echo "  📊 Grafana app '$GRAFANA_APP' already exists — updating image."
+  az containerapp update \
+    --name "$GRAFANA_APP" \
+    --resource-group "$RESOURCE_GROUP" \
+    --image "$GRAFANA_IMAGE" \
+    --set-env-vars "PROMETHEUS_URL=$PROMETHEUS_URL" \
+    --output none
+else
+  echo "  📊 Creating Grafana Container App (external, password-protected)..."
+
+  # Generate Grafana admin password (stored only as Container Apps secret)
+  GRAFANA_PASSWORD=$(openssl rand -hex 20)
+
+  az containerapp create \
+    --name "$GRAFANA_APP" \
+    --resource-group "$RESOURCE_GROUP" \
+    --environment "$CONTAINER_APP_ENV" \
+    --image "$GRAFANA_IMAGE" \
+    --target-port 3000 \
+    --ingress external \
+    --min-replicas 0 \
+    --max-replicas 1 \
+    --cpu 0.25 --memory 0.5Gi \
+    --registry-server "$ACR_LOGIN_SERVER" \
+    --registry-username "$ACR_USERNAME" \
+    --registry-password "$ACR_PASSWORD" \
+    --secrets "gf-admin-password=$GRAFANA_PASSWORD" \
+    --env-vars "GF_SECURITY_ADMIN_PASSWORD=secretref:gf-admin-password" \
+               "GF_AUTH_ANONYMOUS_ENABLED=false" \
+               "GF_USERS_ALLOW_SIGN_UP=false" \
+               "PROMETHEUS_URL=$PROMETHEUS_URL" \
+    --output none
+
+  echo ""
+  echo "  🔑 Grafana admin password stored as Container Apps secret 'gf-admin-password'."
+  echo "     Retrieve with: az containerapp secret show --name $GRAFANA_APP --resource-group $RESOURCE_GROUP --secret-name gf-admin-password"
+fi
+
+echo "  Waiting for Grafana FQDN..."
+GRAFANA_URL=""
+for i in 1 2 3 4 5; do
+  GRAFANA_URL=$(az containerapp show --name "$GRAFANA_APP" --resource-group "$RESOURCE_GROUP" \
+    --query "properties.configuration.ingress.fqdn" -o tsv)
+  if [[ -n "$GRAFANA_URL" ]]; then break; fi
+  sleep 5
+done
+if [[ -z "$GRAFANA_URL" ]]; then
+  echo "⚠️  WARNING: Could not retrieve Grafana FQDN. Check ingress config."
+  GRAFANA_URL="<pending — check Azure portal>"
+fi
+
 echo ""
 echo "✅ Infrastructure ready!"
 echo "========================================="
 echo "App URL:      https://$APP_URL"
+echo "Grafana URL:  https://$GRAFANA_URL"
 echo "ACR:          $ACR_LOGIN_SERVER"
 echo ""
 echo "Next steps:"

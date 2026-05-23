@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'copy-pasta'
+    scheme: https
+    scrape_interval: 15s
+    authorization:
+      credentials_file: /etc/prometheus/metrics-token
+    static_configs:
+      - targets: ['SCRAPE_TARGET_PLACEHOLDER:443']

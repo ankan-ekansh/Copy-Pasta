@@ -146,6 +146,7 @@ Global middleware chain (in order):
 - Prometheus counters and histograms (no namespace prefix)
 - Metric names: `conversions_total`, `conversion_duration_seconds`, `http_requests_total`, `http_request_duration_seconds`, `db_operation_duration_seconds`
 - `/metrics` endpoint gated by `EXPOSE_METRICS=true` (opt-in)
+- Protected by bearer token when `METRICS_TOKEN` is set (production)
 
 ### InstrumentedStore: `backend/internal/store/instrumented.go`
 - Decorator wrapping any `Store` implementation to record `db_operation_duration_seconds`

@@ -75,7 +75,7 @@ make docker-up-obs
 # Grafana:    http://localhost:3001 (admin / $GF_SECURITY_ADMIN_PASSWORD, default: changeme)
 ```
 
-Requires `EXPOSE_METRICS=true` in `.env`. Set `GF_SECURITY_ADMIN_PASSWORD` in `.env` to change the Grafana password.
+Requires `EXPOSE_METRICS=true` in `.env`. Set `GF_SECURITY_ADMIN_PASSWORD` in `.env` to change the Grafana password. In production, `/metrics` is protected by bearer token auth (`METRICS_TOKEN` env var).
 
 **Available metrics:**
 | Metric | Type | Labels | Description |

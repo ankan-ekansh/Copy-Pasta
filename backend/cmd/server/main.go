@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -62,11 +64,18 @@ func main() {
 
 	// Expose /metrics endpoint for Prometheus scraping.
 	// Requires EXPOSE_METRICS=true (or any truthy value: 1, t, yes) to mount the endpoint.
+	// If METRICS_TOKEN is set, requires Authorization: Bearer <token> header.
 	// Note: internal instrumentation (middleware/store metrics) still runs regardless;
 	// this flag only controls whether the /metrics HTTP endpoint is reachable.
 	if exposeMetrics, err := strconv.ParseBool(os.Getenv("EXPOSE_METRICS")); err == nil && exposeMetrics {
-		r.Handle("/metrics", promhttp.Handler())
-		slog.Info("metrics endpoint enabled", "path", "/metrics")
+		metricsHandler := promhttp.Handler()
+		if token := os.Getenv("METRICS_TOKEN"); token != "" {
+			metricsHandler = requireBearerToken(token, metricsHandler)
+			slog.Info("metrics endpoint enabled with token auth", "path", "/metrics")
+		} else {
+			slog.Info("metrics endpoint enabled (no auth)", "path", "/metrics")
+		}
+		r.Handle("/metrics", metricsHandler)
 	}
 
 	// Serve static frontend files if the directory exists (production mode)
@@ -113,4 +122,27 @@ func spaFileServer(root fs.FS) http.HandlerFunc {
 		r.URL.Path = "/"
 		fileServer.ServeHTTP(w, r)
 	}
+}
+
+// requireBearerToken wraps a handler to require a valid Authorization: Bearer <token> header.
+// The scheme comparison is case-insensitive per RFC 7235.
+// Compares SHA-256 digests to ensure constant-time regardless of input length.
+func requireBearerToken(token string, next http.Handler) http.Handler {
+	expectedHash := sha256.Sum256([]byte(token))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
+		// RFC 7235: auth scheme is case-insensitive
+		if len(auth) < 7 || !strings.EqualFold(auth[:7], "bearer ") {
+			w.Header().Set("WWW-Authenticate", "Bearer")
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		providedHash := sha256.Sum256([]byte(auth[7:]))
+		if subtle.ConstantTimeCompare(expectedHash[:], providedHash[:]) != 1 {
+			w.Header().Set("WWW-Authenticate", "Bearer")
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }

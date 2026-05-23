@@ -26,7 +26,7 @@ export async function listGallery(limit = 20, offset = 0): Promise<GalleryPasta[
   return data.pastas || [];
 }
 
-export async function likePasta(id: string): Promise<{ like_count: number; liked: boolean }> {
+export async function likePasta(id: string): Promise<{ like_count: number; liked_by_me: boolean }> {
   const response = await fetch(`/api/pastas/${encodeURIComponent(id)}/like`, {
     method: 'POST',
     credentials: 'include',
@@ -40,7 +40,7 @@ export async function likePasta(id: string): Promise<{ like_count: number; liked
   return response.json();
 }
 
-export async function unlikePasta(id: string): Promise<{ like_count: number; liked: boolean }> {
+export async function unlikePasta(id: string): Promise<{ like_count: number; liked_by_me: boolean }> {
   const response = await fetch(`/api/pastas/${encodeURIComponent(id)}/like`, {
     method: 'DELETE',
     credentials: 'include',

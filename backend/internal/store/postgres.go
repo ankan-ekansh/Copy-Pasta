@@ -155,19 +155,22 @@ func (s *PostgresStore) ListPublic(ctx context.Context, sessionID string, limit,
 		limit = 100
 	}
 
-	// NOTE: GROUP BY aggregates across all matching rows before LIMIT/OFFSET.
-	// Acceptable at current scale; if likes/pastas grow large, consider a
-	// materialized like_count column or a subquery with pre-filtered pagination.
+	// CTE paginates pastas first, then LEFT JOIN likes only for the page.
 	query := `
-		SELECT p.id, p.ascii_art, p.width, p.height, p.mode, p.is_public, p.created_at,
+		WITH page AS (
+			SELECT id, ascii_art, width, height, mode, is_public, created_at
+			FROM pastas
+			WHERE is_public = TRUE
+			ORDER BY created_at DESC
+			LIMIT $1 OFFSET $2
+		)
+		SELECT page.id, page.ascii_art, page.width, page.height, page.mode, page.is_public, page.created_at,
 			COUNT(l.session_id) AS like_count,
 			BOOL_OR(l.session_id = $3) AS liked_by_me
-		FROM pastas p
-		LEFT JOIN likes l ON l.pasta_id = p.id
-		WHERE p.is_public = TRUE
-		GROUP BY p.id
-		ORDER BY p.created_at DESC
-		LIMIT $1 OFFSET $2
+		FROM page
+		LEFT JOIN likes l ON l.pasta_id = page.id
+		GROUP BY page.id, page.ascii_art, page.width, page.height, page.mode, page.is_public, page.created_at
+		ORDER BY page.created_at DESC
 	`
 	rows, err := s.pool.Query(ctx, query, limit, offset, sessionID)
 	if err != nil {

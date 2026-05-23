@@ -65,7 +65,7 @@ export function Gallery({ onBack }: GalleryProps) {
 
       setPastas(prev => prev.map(p =>
         p.id === id
-          ? { ...p, like_count: result.like_count, liked_by_me: result.liked }
+          ? { ...p, like_count: result.like_count, liked_by_me: result.liked_by_me }
           : p
       ));
     } catch {
@@ -145,6 +145,7 @@ export function Gallery({ onBack }: GalleryProps) {
                   type="button"
                   className="gallery-copy-btn"
                   onClick={() => copyToClipboard(pasta.ascii_art)}
+                  aria-label="Copy ASCII art"
                   title="Copy ASCII"
                 >
                   📋

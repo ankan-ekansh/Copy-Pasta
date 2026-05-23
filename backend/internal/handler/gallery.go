@@ -107,8 +107,8 @@ func (h *Handler) LikePasta(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"like_count": count,
-		"liked":      true,
+		"like_count":  count,
+		"liked_by_me": true,
 	})
 }
 
@@ -153,7 +153,7 @@ func (h *Handler) UnlikePasta(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"like_count": count,
-		"liked":      false,
+		"like_count":  count,
+		"liked_by_me": false,
 	})
 }

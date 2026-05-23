@@ -482,8 +482,18 @@ else
   echo "     Retrieve with: az containerapp secret show --name $GRAFANA_APP --resource-group $RESOURCE_GROUP --secret-name gf-admin-password"
 fi
 
-GRAFANA_URL=$(az containerapp show --name "$GRAFANA_APP" --resource-group "$RESOURCE_GROUP" \
-  --query "properties.configuration.ingress.fqdn" -o tsv)
+echo "  Waiting for Grafana FQDN..."
+GRAFANA_URL=""
+for i in 1 2 3 4 5; do
+  GRAFANA_URL=$(az containerapp show --name "$GRAFANA_APP" --resource-group "$RESOURCE_GROUP" \
+    --query "properties.configuration.ingress.fqdn" -o tsv)
+  if [[ -n "$GRAFANA_URL" ]]; then break; fi
+  sleep 5
+done
+if [[ -z "$GRAFANA_URL" ]]; then
+  echo "⚠️  WARNING: Could not retrieve Grafana FQDN. Check ingress config."
+  GRAFANA_URL="<pending — check Azure portal>"
+fi
 
 echo ""
 echo "✅ Infrastructure ready!"

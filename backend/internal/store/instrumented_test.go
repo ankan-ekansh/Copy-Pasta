@@ -25,6 +25,7 @@ type mockStore struct {
 	likeCount       int
 	likedByMe       bool
 	likeCountErr    error
+	isPublicErr     error
 	closed          bool
 }
 
@@ -45,7 +46,7 @@ func (m *mockStore) UnlikePasta(_ context.Context, _, _ string) error  { return 
 func (m *mockStore) GetLikeCount(_ context.Context, _, _ string) (int, bool, error) {
 	return m.likeCount, m.likedByMe, m.likeCountErr
 }
-func (m *mockStore) IsPublicPasta(_ context.Context, _ string) error { return m.getErr }
+func (m *mockStore) IsPublicPasta(_ context.Context, _ string) error { return m.isPublicErr }
 func (m *mockStore) Close()                                          { m.closed = true }
 
 // mockPingStore adds Ping support.

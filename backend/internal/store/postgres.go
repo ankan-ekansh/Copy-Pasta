@@ -142,6 +142,10 @@ func (s *PostgresStore) SetPublicByOwner(ctx context.Context, id, sessionID stri
 	if result.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+	// Clear likes when unpublishing so social state doesn't persist across toggles
+	if !isPublic {
+		_, _ = s.pool.Exec(ctx, "DELETE FROM likes WHERE pasta_id = $1", id)
+	}
 	return nil
 }
 
@@ -198,18 +202,22 @@ func (s *PostgresStore) LikePasta(ctx context.Context, pastaID, sessionID string
 	if err != nil {
 		return err
 	}
-	// No row inserted means pasta doesn't exist or isn't public
+	// No row inserted means pasta doesn't exist, isn't public, or already liked
 	if result.RowsAffected() == 0 {
-		// Check if it's already liked (ON CONFLICT DO NOTHING)
+		// Check if already liked AND pasta is still public
 		var exists bool
 		err = s.pool.QueryRow(ctx,
-			"SELECT EXISTS(SELECT 1 FROM likes WHERE pasta_id = $1 AND session_id = $2)",
+			`SELECT EXISTS(
+				SELECT 1 FROM likes l
+				JOIN pastas p ON p.id = l.pasta_id
+				WHERE l.pasta_id = $1 AND l.session_id = $2 AND p.is_public = TRUE
+			)`,
 			pastaID, sessionID).Scan(&exists)
 		if err != nil {
 			return err
 		}
 		if exists {
-			return nil // idempotent: already liked
+			return nil // idempotent: already liked and pasta is still public
 		}
 		return ErrNotFound
 	}

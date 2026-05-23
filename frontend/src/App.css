@@ -277,6 +277,16 @@
   white-space: pre;
 }
 
+:root[data-theme='light'] .ascii-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(245, 247, 250, 0.98));
+}
+
+:root[data-theme='light'] .ascii-output {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #1e293b;
+}
+
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.16em;

@@ -164,6 +164,9 @@ func (s *PostgresStore) ListPublic(ctx context.Context, sessionID string, limit,
 	if limit > 100 {
 		limit = 100
 	}
+	if offset < 0 {
+		offset = 0
+	}
 
 	// CTE paginates pastas first, then LEFT JOIN likes only for the page.
 	query := `

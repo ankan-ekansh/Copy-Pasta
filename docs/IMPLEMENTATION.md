@@ -135,7 +135,7 @@ Global middleware chain (in order):
 - `Retry-After` header is derived from `rateLimitWindow` (currently 60s).
 - Returns 429 with JSON `{"error": "rate limit exceeded, try again later"}`.
 
-**Trust assumption:** `chi/middleware.RealIP` trusts `X-Real-IP` and `X-Forwarded-For` headers. This is safe only when the app runs behind a trusted reverse proxy (nginx, Azure Front Door, Container Apps ingress) that sets/overwrites these headers. If exposed directly to the internet without a proxy, clients can spoof their IP to bypass rate limits. In production, Azure Container Apps ingress always sets `X-Forwarded-For`.
+**Trust assumption:** `chi/middleware.RealIP` trusts `X-Real-IP` and `X-Forwarded-For` headers. The nginx reverse proxy sets both (`X-Real-IP: $remote_addr` and `X-Forwarded-For: $proxy_add_x_forwarded_for`), preventing client spoofing in Docker Compose. In production, Azure Container Apps ingress always sets `X-Forwarded-For`. Direct internet exposure without a proxy would allow bypass via spoofed headers.
 
 ### Metrics: `backend/internal/metrics/`
 - Prometheus counters and histograms (no namespace prefix)

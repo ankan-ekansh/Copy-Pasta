@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 )
 
@@ -58,9 +59,10 @@ func TestRateLimitConvert_OverLimit(t *testing.T) {
 		t.Errorf("unexpected error message: %q", body["error"])
 	}
 
-	// Verify Retry-After header
-	if rec.Header().Get("Retry-After") != "60" {
-		t.Errorf("expected Retry-After: 60, got %q", rec.Header().Get("Retry-After"))
+	// Verify Retry-After header is derived from rateLimitWindow
+	expectedRetryAfter := strconv.Itoa(int(rateLimitWindow.Seconds()))
+	if rec.Header().Get("Retry-After") != expectedRetryAfter {
+		t.Errorf("expected Retry-After: %s, got %q", expectedRetryAfter, rec.Header().Get("Retry-After"))
 	}
 }
 
@@ -69,22 +71,34 @@ func TestRateLimitConvert_DifferentIPsAreIndependent(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	// Exhaust limit for IP A
+	// Exhaust limit for IP A and verify each succeeds
 	for i := 0; i < 10; i++ {
 		req := httptest.NewRequest("POST", "/api/convert", nil)
 		req.RemoteAddr = "10.0.0.2:12345"
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("IP A request %d: expected 200, got %d", i+1, rec.Code)
+		}
+	}
+
+	// Verify IP A is now rate-limited
+	req := httptest.NewRequest("POST", "/api/convert", nil)
+	req.RemoteAddr = "10.0.0.2:12345"
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Errorf("IP A should be rate-limited, got %d", rec.Code)
 	}
 
 	// IP B should still work
-	req := httptest.NewRequest("POST", "/api/convert", nil)
+	req = httptest.NewRequest("POST", "/api/convert", nil)
 	req.RemoteAddr = "10.0.0.3:12345"
-	rec := httptest.NewRecorder()
+	rec = httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Errorf("different IP should not be limited, got %d", rec.Code)
+		t.Errorf("IP B should not be limited, got %d", rec.Code)
 	}
 }
 

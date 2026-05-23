@@ -25,6 +25,8 @@ services:
       - PORT=8080
       - DATABASE_URL=postgres://${POSTGRES_USER:-copypasta}:${POSTGRES_PASSWORD:-copypasta}@postgres:5432/${POSTGRES_DB:-copypasta}?sslmode=disable
       - EXPOSE_METRICS
+      - RATE_LIMIT_CONVERT
+      - RATE_LIMIT_API
     depends_on:
       postgres:
         condition: service_healthy

@@ -259,10 +259,111 @@ else
   fi
 fi
 
+# =============================================================================
+# Step 7: Observability — Prometheus + Grafana Container Apps
+# =============================================================================
+PROMETHEUS_APP="prometheus-copy-pasta"
+GRAFANA_APP="grafana-copy-pasta"
+PROMETHEUS_IMAGE="$ACR_LOGIN_SERVER/prometheus-copy-pasta:latest"
+GRAFANA_IMAGE="$ACR_LOGIN_SERVER/grafana-copy-pasta:latest"
+
+echo ""
+echo "📊 Setting up observability stack..."
+
+# Build and push Prometheus image
+echo "  Building Prometheus image..."
+docker build -t "$PROMETHEUS_IMAGE" -f infra/prometheus/Dockerfile \
+  --build-arg CONFIG_FILE=prometheus-azure.yml \
+  infra/prometheus/ 2>/dev/null
+az acr login --name "$ACR_NAME" --output none 2>/dev/null
+docker push "$PROMETHEUS_IMAGE" 2>/dev/null
+
+# Build and push Grafana image
+echo "  Building Grafana image..."
+docker build -t "$GRAFANA_IMAGE" \
+  --build-arg PROVISIONING_DIR=provisioning-azure \
+  infra/grafana/ 2>/dev/null
+docker push "$GRAFANA_IMAGE" 2>/dev/null
+
+# Deploy Prometheus (internal only)
+if az containerapp show --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+  echo "  📈 Prometheus app '$PROMETHEUS_APP' already exists — updating image."
+  az containerapp update \
+    --name "$PROMETHEUS_APP" \
+    --resource-group "$RESOURCE_GROUP" \
+    --image "$PROMETHEUS_IMAGE" \
+    --output none
+else
+  echo "  📈 Creating Prometheus Container App (internal only)..."
+  az containerapp create \
+    --name "$PROMETHEUS_APP" \
+    --resource-group "$RESOURCE_GROUP" \
+    --environment "$CONTAINER_APP_ENV" \
+    --image "$PROMETHEUS_IMAGE" \
+    --target-port 9090 \
+    --ingress internal \
+    --min-replicas 1 \
+    --max-replicas 1 \
+    --cpu 0.25 --memory 0.5Gi \
+    --registry-server "$ACR_LOGIN_SERVER" \
+    --registry-username "$ACR_NAME" \
+    --registry-password "$ACR_PASSWORD" \
+    --output none
+fi
+
+# Deploy Grafana (external, password-protected)
+# Get Prometheus internal FQDN for Grafana datasource
+PROMETHEUS_FQDN=$(az containerapp show --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GROUP" \
+  --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "prometheus-copy-pasta")
+PROMETHEUS_URL="https://$PROMETHEUS_FQDN"
+
+if az containerapp show --name "$GRAFANA_APP" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+  echo "  📊 Grafana app '$GRAFANA_APP' already exists — updating image."
+  az containerapp update \
+    --name "$GRAFANA_APP" \
+    --resource-group "$RESOURCE_GROUP" \
+    --image "$GRAFANA_IMAGE" \
+    --set-env-vars "PROMETHEUS_URL=$PROMETHEUS_URL" \
+    --output none
+else
+  echo "  📊 Creating Grafana Container App (external, password-protected)..."
+
+  # Generate Grafana admin password
+  GRAFANA_PASSWORD=$(openssl rand -hex 20)
+
+  az containerapp create \
+    --name "$GRAFANA_APP" \
+    --resource-group "$RESOURCE_GROUP" \
+    --environment "$CONTAINER_APP_ENV" \
+    --image "$GRAFANA_IMAGE" \
+    --target-port 3000 \
+    --ingress external \
+    --min-replicas 0 \
+    --max-replicas 1 \
+    --cpu 0.25 --memory 0.5Gi \
+    --registry-server "$ACR_LOGIN_SERVER" \
+    --registry-username "$ACR_NAME" \
+    --registry-password "$ACR_PASSWORD" \
+    --secrets "gf-admin-password=$GRAFANA_PASSWORD" \
+    --env-vars "GF_SECURITY_ADMIN_PASSWORD=secretref:gf-admin-password" \
+               "GF_AUTH_ANONYMOUS_ENABLED=false" \
+               "GF_USERS_ALLOW_SIGN_UP=false" \
+               "PROMETHEUS_URL=$PROMETHEUS_URL" \
+    --output none
+
+  echo ""
+  echo "  🔑 Grafana admin password: $GRAFANA_PASSWORD"
+  echo "     (Save this! It's stored as a Container Apps secret.)"
+fi
+
+GRAFANA_URL=$(az containerapp show --name "$GRAFANA_APP" --resource-group "$RESOURCE_GROUP" \
+  --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "pending")
+
 echo ""
 echo "✅ Infrastructure ready!"
 echo "========================================="
 echo "App URL:      https://$APP_URL"
+echo "Grafana URL:  https://$GRAFANA_URL"
 echo "ACR:          $ACR_LOGIN_SERVER"
 echo ""
 echo "Next steps:"

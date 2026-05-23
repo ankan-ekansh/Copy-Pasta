@@ -1,0 +1,198 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Request Rate (req/s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total[5m])) by (route)",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "title": "Error Rate (4xx + 5xx)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{status=~\"4..\"}[5m]))",
+          "legendFormat": "4xx"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m]))",
+          "legendFormat": "5xx"
+        }
+      ]
+    },
+    {
+      "title": "Latency p50 / p95 / p99",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": { "unit": "s" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "title": "Conversions by Mode",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": { "unit": "ops" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(conversions_total[5m])) by (mode)",
+          "legendFormat": "{{mode}}"
+        }
+      ]
+    },
+    {
+      "title": "Conversion Latency (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": { "unit": "s" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(conversion_duration_seconds_bucket[5m])) by (le, mode))",
+          "legendFormat": "p95 {{mode}}"
+        }
+      ]
+    },
+    {
+      "title": "DB Operation Latency (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": { "unit": "s" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(db_operation_duration_seconds_bucket[5m])) by (le, operation))",
+          "legendFormat": "p95 {{operation}}"
+        }
+      ]
+    },
+    {
+      "title": "Response Size (p95)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_response_size_bytes_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "title": "Total Conversions",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(conversions_total)",
+          "legendFormat": "total"
+        }
+      ]
+    },
+    {
+      "title": "DB Errors",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "thresholds": { "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}] } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(db_operations_total{status=\"error\"}) or vector(0)",
+          "legendFormat": "errors"
+        }
+      ]
+    },
+    {
+      "title": "Uptime (requests served)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(http_requests_total)",
+          "legendFormat": "total requests"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["copy-pasta"],
+  "templating": {
+    "list": [
+      {
+        "name": "DS_PROMETHEUS",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": { "text": "Prometheus", "value": "Prometheus" }
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Copy-Pasta Overview",
+  "uid": "copy-pasta-overview",
+  "version": 1
+}

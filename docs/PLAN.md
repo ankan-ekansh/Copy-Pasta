@@ -218,8 +218,8 @@ CREATE INDEX idx_pastas_public ON pastas(is_public, created_at);
 | Rich health endpoint (DB check, version, uptime) | ✅ PR #15 |
 | Prometheus metrics (`/metrics`) | ✅ PR #16 |
 | Local observability stack (docker-compose) | ✅ PR #16 |
-| Production Prometheus + Grafana | ⬜ |
-| Pre-built Grafana dashboard | ⬜ |
+| Production Prometheus + Grafana | ✅ PR #22 |
+| Pre-built Grafana dashboard | ✅ PR #22 |
 | Documentation | ✅ PR #14 |
 
 See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation plan.

@@ -18,13 +18,18 @@ type Pasta struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// GalleryPasta extends Pasta with social metadata for gallery views.
-// Note: Do not serialize directly — use galleryPastaResponse in handlers
-// to avoid leaking SessionID.
+// GalleryPasta holds public pasta data with social metadata for gallery views.
+// Does not embed Pasta to prevent accidental SessionID serialization.
 type GalleryPasta struct {
-	Pasta
-	LikeCount int  `json:"like_count"`
-	LikedByMe bool `json:"liked_by_me"`
+	ID        string    `json:"id"`
+	ASCIIArt  string    `json:"ascii_art"`
+	Width     int       `json:"width"`
+	Height    int       `json:"height"`
+	Mode      string    `json:"mode"`
+	IsPublic  bool      `json:"-"`
+	CreatedAt time.Time `json:"created_at"`
+	LikeCount int       `json:"like_count"`
+	LikedByMe bool      `json:"liked_by_me"`
 }
 
 // Store defines the persistence interface for pastas.
@@ -53,7 +58,7 @@ type Store interface {
 	// LikePasta adds a like from the session. Idempotent — no-op if already liked.
 	LikePasta(ctx context.Context, pastaID, sessionID string) error
 
-	// UnlikePasta removes a like from the session. Returns ErrNotFound if not liked.
+	// UnlikePasta removes a like from the session. Idempotent — no-op if not liked.
 	UnlikePasta(ctx context.Context, pastaID, sessionID string) error
 
 	// GetLikeCount returns the like count for a pasta and whether the session liked it.

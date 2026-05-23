@@ -2,10 +2,11 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -153,8 +154,11 @@ func (s *PostgresStore) ListPublic(ctx context.Context, sessionID string, limit,
 		limit = 100
 	}
 
+	// NOTE: GROUP BY aggregates across all matching rows before LIMIT/OFFSET.
+	// Acceptable at current scale; if likes/pastas grow large, consider a
+	// materialized like_count column or a subquery with pre-filtered pagination.
 	query := `
-		SELECT p.id, p.session_id, p.ascii_art, p.width, p.height, p.mode, p.is_public, p.created_at,
+		SELECT p.id, p.ascii_art, p.width, p.height, p.mode, p.is_public, p.created_at,
 			COUNT(l.session_id) AS like_count,
 			BOOL_OR(l.session_id = $3) AS liked_by_me
 		FROM pastas p
@@ -174,7 +178,7 @@ func (s *PostgresStore) ListPublic(ctx context.Context, sessionID string, limit,
 	for rows.Next() {
 		var gp GalleryPasta
 		var likedByMe *bool
-		if err := rows.Scan(&gp.ID, &gp.SessionID, &gp.ASCIIArt, &gp.Width, &gp.Height,
+		if err := rows.Scan(&gp.ID, &gp.ASCIIArt, &gp.Width, &gp.Height,
 			&gp.Mode, &gp.IsPublic, &gp.CreatedAt, &gp.LikeCount, &likedByMe); err != nil {
 			return nil, err
 		}
@@ -191,8 +195,8 @@ func (s *PostgresStore) LikePasta(ctx context.Context, pastaID, sessionID string
 		"INSERT INTO likes (pasta_id, session_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
 		pastaID, sessionID)
 	if err != nil {
-		// Foreign key violation means pasta doesn't exist
-		if strings.Contains(err.Error(), "violates foreign key constraint") {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
 			return ErrNotFound
 		}
 		return err
@@ -201,16 +205,10 @@ func (s *PostgresStore) LikePasta(ctx context.Context, pastaID, sessionID string
 }
 
 func (s *PostgresStore) UnlikePasta(ctx context.Context, pastaID, sessionID string) error {
-	result, err := s.pool.Exec(ctx,
+	_, err := s.pool.Exec(ctx,
 		"DELETE FROM likes WHERE pasta_id = $1 AND session_id = $2",
 		pastaID, sessionID)
-	if err != nil {
-		return err
-	}
-	if result.RowsAffected() == 0 {
-		return ErrNotFound
-	}
-	return nil
+	return err
 }
 
 func (s *PostgresStore) GetLikeCount(ctx context.Context, pastaID, sessionID string) (int, bool, error) {

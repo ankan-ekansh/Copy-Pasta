@@ -263,7 +263,7 @@ func TestInstrumentedStore_Duration_Recorded(t *testing.T) {
 func TestInstrumentedStore_ListPublic_RecordsMetrics(t *testing.T) {
 	metrics.DBOperationsTotal.Reset()
 
-	inner := &mockStore{listPublicResult: []GalleryPasta{{Pasta: Pasta{ID: "a"}}}}
+	inner := &mockStore{listPublicResult: []GalleryPasta{{ID: "a"}}}
 	s := NewInstrumented(inner)
 
 	pastas, err := s.ListPublic(context.Background(), "sess", 10, 0)

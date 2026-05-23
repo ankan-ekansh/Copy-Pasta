@@ -132,10 +132,6 @@ func (h *Handler) UnlikePasta(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.store.UnlikePasta(r.Context(), id, sessionID); err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "not liked")
-			return
-		}
 		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}

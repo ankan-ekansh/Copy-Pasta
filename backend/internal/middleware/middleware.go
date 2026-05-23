@@ -12,7 +12,9 @@ import (
 
 func Register(r chi.Router) {
 	r.Use(CORS())
-	r.Use(chimiddleware.RealIP)
+	if isTrustedProxy() {
+		r.Use(chimiddleware.RealIP)
+	}
 	r.Use(RequestID)
 	r.Use(Metrics)
 	r.Use(RequestLog)

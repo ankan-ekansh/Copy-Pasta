@@ -134,3 +134,45 @@ func TestEnvIntOrDefault(t *testing.T) {
 		})
 	}
 }
+
+func TestRateLimitAPI_EnforcesLimit(t *testing.T) {
+	t.Setenv("RATE_LIMIT_API", "5")
+	handler := RateLimitAPI()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Exhaust the configured limit (5 requests)
+	for i := 0; i < 5; i++ {
+		req := httptest.NewRequest("GET", "/api/pastas", nil)
+		req.RemoteAddr = "10.0.0.50:12345"
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("request %d: expected 200, got %d", i+1, rec.Code)
+		}
+	}
+
+	// 6th request should be rate limited
+	req := httptest.NewRequest("GET", "/api/pastas", nil)
+	req.RemoteAddr = "10.0.0.50:12345"
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Errorf("expected 429, got %d", rec.Code)
+	}
+
+	// Verify same 429 response format as RateLimitConvert
+	var body map[string]string
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response body: %v", err)
+	}
+	if body["error"] != "rate limit exceeded, try again later" {
+		t.Errorf("unexpected error message: %q", body["error"])
+	}
+
+	expectedRetryAfter := strconv.Itoa(int(rateLimitWindow.Seconds()))
+	if rec.Header().Get("Retry-After") != expectedRetryAfter {
+		t.Errorf("expected Retry-After: %s, got %q", expectedRetryAfter, rec.Header().Get("Retry-After"))
+	}
+}

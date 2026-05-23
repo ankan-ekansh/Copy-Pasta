@@ -119,7 +119,7 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 ### Middleware: `backend/internal/middleware/middleware.go`
 Global middleware chain (in order):
 1. **CORS** — Origin validation, credentials support, wildcard+credentials guard
-2. **RealIP** (`chi/middleware.RealIP`) — Extracts client IP from `X-Forwarded-For`/`X-Real-IP` headers
+2. **RealIP** (`chi/middleware.RealIP`) — Conditional: only enabled when `TRUSTED_PROXY=true`. Extracts client IP from `X-Forwarded-For`/`X-Real-IP` headers.
 3. **RequestID** — Generates/propagates `X-Request-ID` header
 4. **Metrics** — Records HTTP request count and duration (Prometheus histograms)
 5. **RequestLog** — Structured access logging via `slog`
@@ -129,13 +129,18 @@ Global middleware chain (in order):
 **RateLimitAPI** is applied only to `/api` routes (via chi `Route` group), not to static assets or `/metrics`.
 
 ### Rate Limiting: `backend/internal/middleware/ratelimit.go`
-- **RateLimitConvert()** — Applied per-route on `POST /api/convert` via `api.With()`. 10 req/min per IP (configurable via `RATE_LIMIT_CONVERT`).
-- **RateLimitAPI()** — Applied to the `/api` route group only. 100 req/min per IP (configurable via `RATE_LIMIT_API`).
-- Uses `go-chi/httprate` with `WithKeyByRealIP()` for proper IP extraction behind proxies.
+- **RateLimitConvert()** — Applied per-route on `POST /api/convert`. 10 req/min per IP (configurable via `RATE_LIMIT_CONVERT`).
+- **RateLimitAPI()** — Applied to general `/api` routes (excludes `/api/convert` which has its own limiter). 100 req/min per IP (configurable via `RATE_LIMIT_API`).
+- IP keying is conditional on `TRUSTED_PROXY`:
+  - `TRUSTED_PROXY=true` → uses `httprate.WithKeyByRealIP()` (reads X-Real-IP/X-Forwarded-For)
+  - `TRUSTED_PROXY` unset/false → uses `httprate.WithKeyByIP()` (reads RemoteAddr directly)
 - `Retry-After` header is derived from `rateLimitWindow` (currently 60s).
 - Returns 429 with JSON `{"error": "rate limit exceeded, try again later"}`.
 
-**Trust assumption:** `chi/middleware.RealIP` trusts `X-Real-IP` and `X-Forwarded-For` headers. The nginx reverse proxy overwrites both with `$remote_addr`, discarding any client-supplied values and preventing IP spoofing in Docker Compose. In production, Azure Container Apps ingress overwrites `X-Forwarded-For` at the edge. Direct internet exposure without a proxy would allow bypass via spoofed headers.
+**Trust model:**
+- **Docker Compose** (`TRUSTED_PROXY=true`): nginx overwrites `X-Real-IP` and `X-Forwarded-For` with `$remote_addr`, so client-supplied values are discarded. RealIP middleware + `WithKeyByRealIP()` are safe.
+- **Azure** (`TRUSTED_PROXY=true`): Container Apps ingress overwrites `X-Forwarded-For` at the edge.
+- **Local dev** (`make dev-backend`, `TRUSTED_PROXY` unset): RealIP middleware is skipped, rate limiting uses `RemoteAddr` directly. No spoofing possible.
 
 ### Metrics: `backend/internal/metrics/`
 - Prometheus counters and histograms (no namespace prefix)

@@ -56,8 +56,8 @@ Copy-Pasta is a Go (backend) + React (frontend) web app that converts meme image
 
 - **Metrics labels:** Never use raw URL paths as Prometheus labels (unbounded cardinality). Use route patterns from `chi.RouteContext().RoutePattern()`.
 - **Middleware:** Always nil-guard `chi.RouteContext()` — can be nil outside the router.
-- **Rate limiting:** Scoped to `/api` routes only (via chi Route group). Static assets and `/metrics` are not rate-limited.
-- **RealIP trust:** `chi/middleware.RealIP` trusts `X-Forwarded-For`/`X-Real-IP`. Safe only behind a trusted proxy (Azure Container Apps ingress, nginx).
+- **Rate limiting:** Scoped to `/api` routes only (via chi Route group). `/api/convert` has its own limiter; general API routes share a separate one.
+- **RealIP trust:** `chi/middleware.RealIP` and `WithKeyByRealIP()` are only active when `TRUSTED_PROXY=true`. Without it, `RemoteAddr` is used directly (safe for bare dev server).
 - **Store pattern:** Use interfaces for persistence. The `InstrumentedStore` decorator wraps any `Store` implementation to add metrics without modifying the original.
 - **Health endpoint:** Report "unknown" (not "down") when a capability isn't available or testable.
 - **Docker Compose:** 

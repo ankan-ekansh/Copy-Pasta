@@ -16,22 +16,42 @@ const (
 	rateLimitWindow     = 1 * time.Minute
 )
 
+// isTrustedProxy returns true when the app is running behind a trusted
+// reverse proxy that overwrites X-Real-IP / X-Forwarded-For headers.
+// Set TRUSTED_PROXY=true in environments with a proxy (Docker Compose, Azure).
+// When false (e.g., bare `make dev-backend`), rate limiting keys on RemoteAddr
+// to prevent IP spoofing via forged headers.
+func isTrustedProxy() bool {
+	v, err := strconv.ParseBool(os.Getenv("TRUSTED_PROXY"))
+	return err == nil && v
+}
+
+// ipKeyFunc returns the appropriate httprate key function based on
+// whether the app is behind a trusted proxy.
+func ipKeyFunc() httprate.Option {
+	if isTrustedProxy() {
+		return httprate.WithKeyByRealIP()
+	}
+	return httprate.WithKeyByIP()
+}
+
 // RateLimitConvert returns a rate limiter scoped to the /api/convert endpoint.
 // Configurable via RATE_LIMIT_CONVERT env var (default: 10 requests/minute per IP).
 func RateLimitConvert() func(http.Handler) http.Handler {
 	limit := envIntOrDefault("RATE_LIMIT_CONVERT", defaultConvertLimit)
 	return httprate.Limit(limit, rateLimitWindow,
-		httprate.WithKeyByRealIP(),
+		ipKeyFunc(),
 		httprate.WithLimitHandler(rateLimitExceededHandler()),
 	)
 }
 
-// RateLimitAPI returns a general rate limiter for all API endpoints.
+// RateLimitAPI returns a rate limiter for general API routes (excludes /api/convert,
+// which has its own stricter limiter via RateLimitConvert).
 // Configurable via RATE_LIMIT_API env var (default: 100 requests/minute per IP).
 func RateLimitAPI() func(http.Handler) http.Handler {
 	limit := envIntOrDefault("RATE_LIMIT_API", defaultAPILimit)
 	return httprate.Limit(limit, rateLimitWindow,
-		httprate.WithKeyByRealIP(),
+		ipKeyFunc(),
 		httprate.WithLimitHandler(rateLimitExceededHandler()),
 	)
 }

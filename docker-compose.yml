@@ -27,6 +27,7 @@ services:
       - EXPOSE_METRICS
       - RATE_LIMIT_CONVERT
       - RATE_LIMIT_API
+      - TRUSTED_PROXY=true
     depends_on:
       postgres:
         condition: service_healthy

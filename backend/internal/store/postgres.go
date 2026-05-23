@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -54,7 +55,6 @@ func (s *PostgresStore) migrate(ctx context.Context) error {
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			PRIMARY KEY (pasta_id, session_id)
 		)`,
-		`CREATE INDEX IF NOT EXISTS idx_likes_pasta ON likes(pasta_id)`,
 	}
 	for _, stmt := range statements {
 		if _, err := s.pool.Exec(ctx, stmt); err != nil {
@@ -191,6 +191,10 @@ func (s *PostgresStore) LikePasta(ctx context.Context, pastaID, sessionID string
 		"INSERT INTO likes (pasta_id, session_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
 		pastaID, sessionID)
 	if err != nil {
+		// Foreign key violation means pasta doesn't exist
+		if strings.Contains(err.Error(), "violates foreign key constraint") {
+			return ErrNotFound
+		}
 		return err
 	}
 	return nil

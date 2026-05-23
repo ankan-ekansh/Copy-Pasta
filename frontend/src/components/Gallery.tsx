@@ -14,7 +14,7 @@ export function Gallery({ onBack }: GalleryProps) {
   const [hasMore, setHasMore] = useState(true);
   const limit = 20;
 
-  const loadGallery = async (pageOffset: number) => {
+  const loadGallery = async (pageOffset: number): Promise<boolean> => {
     setLoading(true);
     setError(null);
     try {
@@ -25,8 +25,10 @@ export function Gallery({ onBack }: GalleryProps) {
         setPastas(prev => [...prev, ...items]);
       }
       setHasMore(items.length === limit);
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load gallery');
+      return false;
     } finally {
       setLoading(false);
     }
@@ -65,10 +67,10 @@ export function Gallery({ onBack }: GalleryProps) {
     }
   };
 
-  const handleLoadMore = () => {
+  const handleLoadMore = async () => {
     const newOffset = offset + limit;
-    setOffset(newOffset);
-    loadGallery(newOffset);
+    const success = await loadGallery(newOffset);
+    if (success) setOffset(newOffset);
   };
 
   const copyToClipboard = (text: string) => {
@@ -78,7 +80,7 @@ export function Gallery({ onBack }: GalleryProps) {
   return (
     <div className="gallery">
       <div className="gallery-header">
-        <button className="gallery-back-btn" onClick={onBack}>← Back</button>
+        <button type="button" className="gallery-back-btn" onClick={onBack}>← Back</button>
         <h2>🖼️ Public Gallery</h2>
         <p className="gallery-subtitle">Community ASCII masterpieces</p>
       </div>
@@ -117,6 +119,7 @@ export function Gallery({ onBack }: GalleryProps) {
               </div>
               <div className="gallery-card-actions">
                 <button
+                  type="button"
                   className={`gallery-like-btn ${pasta.liked_by_me ? 'liked' : ''}`}
                   onClick={() => handleLike(pasta.id, pasta.liked_by_me)}
                   title={pasta.liked_by_me ? 'Unlike' : 'Like'}
@@ -124,6 +127,7 @@ export function Gallery({ onBack }: GalleryProps) {
                   {pasta.liked_by_me ? '❤️' : '🤍'} {pasta.like_count}
                 </button>
                 <button
+                  type="button"
                   className="gallery-copy-btn"
                   onClick={() => copyToClipboard(pasta.ascii_art)}
                   title="Copy ASCII"
@@ -137,6 +141,7 @@ export function Gallery({ onBack }: GalleryProps) {
               <div className="gallery-card-expanded">
                 <pre className="gallery-card-full-ascii">{pasta.ascii_art}</pre>
                 <button
+                  type="button"
                   className="gallery-copy-full-btn"
                   onClick={() => copyToClipboard(pasta.ascii_art)}
                 >
@@ -149,7 +154,7 @@ export function Gallery({ onBack }: GalleryProps) {
       </div>
 
       {hasMore && !loading && (
-        <button className="gallery-load-more" onClick={handleLoadMore}>
+        <button type="button" className="gallery-load-more" onClick={handleLoadMore}>
           Load more
         </button>
       )}

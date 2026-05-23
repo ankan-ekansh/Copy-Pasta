@@ -92,6 +92,10 @@ func (h *Handler) LikePasta(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.store.LikePasta(r.Context(), id, sessionID); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "pasta not found")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}

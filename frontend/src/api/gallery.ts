@@ -15,7 +15,9 @@ export async function listGallery(limit = 20, offset = 0): Promise<GalleryPasta[
   });
 
   if (!response.ok) {
-    if (response.status === 503) return [];
+    if (response.status === 503) {
+      throw new Error('Gallery is not available — persistence is not configured');
+    }
     const error = await response.json().catch(() => ({ error: response.statusText || 'Request failed' }));
     throw new Error(error.error || 'Failed to load gallery');
   }

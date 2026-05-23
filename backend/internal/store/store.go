@@ -19,6 +19,8 @@ type Pasta struct {
 }
 
 // GalleryPasta extends Pasta with social metadata for gallery views.
+// Note: Do not serialize directly — use galleryPastaResponse in handlers
+// to avoid leaking SessionID.
 type GalleryPasta struct {
 	Pasta
 	LikeCount int  `json:"like_count"`

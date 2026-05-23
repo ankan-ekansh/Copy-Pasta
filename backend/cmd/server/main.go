@@ -35,8 +35,8 @@ func main() {
 		if err != nil {
 			slog.Warn("failed to connect to database, persistence disabled", "error", err)
 		} else {
-			defer s.Close()
 			s = store.NewInstrumented(s)
+			defer s.Close()
 			slog.Info("connected to database")
 		}
 	} else {

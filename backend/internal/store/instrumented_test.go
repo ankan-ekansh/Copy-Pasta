@@ -53,9 +53,14 @@ func TestInstrumentedStore_Save_RecordsMetrics(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	counter, _ := metrics.DBOperationsTotal.GetMetricWithLabelValues("save", "success")
+	counter, err := metrics.DBOperationsTotal.GetMetricWithLabelValues("save", "success")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
 	m := &dto.Metric{}
-	counter.Write(m)
+	if err := counter.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
 	if m.GetCounter().GetValue() != 1 {
 		t.Errorf("expected 1 save success, got %f", m.GetCounter().GetValue())
 	}
@@ -72,9 +77,14 @@ func TestInstrumentedStore_Save_Error_RecordsErrorStatus(t *testing.T) {
 		t.Fatal("expected error, got nil")
 	}
 
-	counter, _ := metrics.DBOperationsTotal.GetMetricWithLabelValues("save", "error")
+	counter, err := metrics.DBOperationsTotal.GetMetricWithLabelValues("save", "error")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
 	m := &dto.Metric{}
-	counter.Write(m)
+	if err := counter.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
 	if m.GetCounter().GetValue() != 1 {
 		t.Errorf("expected 1 save error, got %f", m.GetCounter().GetValue())
 	}
@@ -92,9 +102,14 @@ func TestInstrumentedStore_Get_NotFound_IsSuccess(t *testing.T) {
 	}
 
 	// ErrNotFound should be classified as "success" (expected outcome)
-	counter, _ := metrics.DBOperationsTotal.GetMetricWithLabelValues("get", "success")
+	counter, err := metrics.DBOperationsTotal.GetMetricWithLabelValues("get", "success")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
 	m := &dto.Metric{}
-	counter.Write(m)
+	if err := counter.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
 	if m.GetCounter().GetValue() != 1 {
 		t.Errorf("expected 1 get success (not found), got %f", m.GetCounter().GetValue())
 	}
@@ -114,9 +129,14 @@ func TestInstrumentedStore_List_RecordsMetrics(t *testing.T) {
 		t.Errorf("expected 2 pastas, got %d", len(pastas))
 	}
 
-	counter, _ := metrics.DBOperationsTotal.GetMetricWithLabelValues("list", "success")
+	counter, err := metrics.DBOperationsTotal.GetMetricWithLabelValues("list", "success")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
 	m := &dto.Metric{}
-	counter.Write(m)
+	if err := counter.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
 	if m.GetCounter().GetValue() != 1 {
 		t.Errorf("expected 1 list success, got %f", m.GetCounter().GetValue())
 	}
@@ -129,9 +149,14 @@ func TestInstrumentedStore_Delete_RecordsMetrics(t *testing.T) {
 	s := NewInstrumented(inner)
 	s.DeleteByOwner(context.Background(), "id", "sess")
 
-	counter, _ := metrics.DBOperationsTotal.GetMetricWithLabelValues("delete", "success")
+	counter, err := metrics.DBOperationsTotal.GetMetricWithLabelValues("delete", "success")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
 	m := &dto.Metric{}
-	counter.Write(m)
+	if err := counter.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
 	if m.GetCounter().GetValue() != 1 {
 		t.Errorf("expected 1 delete success, got %f", m.GetCounter().GetValue())
 	}
@@ -144,9 +169,14 @@ func TestInstrumentedStore_SetPublic_RecordsMetrics(t *testing.T) {
 	s := NewInstrumented(inner)
 	s.SetPublicByOwner(context.Background(), "id", "sess", true)
 
-	counter, _ := metrics.DBOperationsTotal.GetMetricWithLabelValues("set_public", "success")
+	counter, err := metrics.DBOperationsTotal.GetMetricWithLabelValues("set_public", "success")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
 	m := &dto.Metric{}
-	counter.Write(m)
+	if err := counter.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
 	if m.GetCounter().GetValue() != 1 {
 		t.Errorf("expected 1 set_public success, got %f", m.GetCounter().GetValue())
 	}
@@ -198,7 +228,10 @@ func TestInstrumentedStore_Duration_Recorded(t *testing.T) {
 	s := NewInstrumented(inner)
 	s.Save(context.Background(), &Pasta{ID: "test"})
 
-	observer, _ := metrics.DBOperationDuration.GetMetricWithLabelValues("save")
+	observer, err := metrics.DBOperationDuration.GetMetricWithLabelValues("save")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
 	m := &dto.Metric{}
 	observer.(interface{ Write(*dto.Metric) error }).Write(m)
 

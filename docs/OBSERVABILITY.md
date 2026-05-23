@@ -201,10 +201,12 @@ grafana:
     - ./infra/grafana/provisioning:/etc/grafana/provisioning
     - ./infra/grafana/dashboards:/var/lib/grafana/dashboards
   ports:
-    - "3001:3000"
+    - "3001:3000"  # access locally at http://localhost:3001
   environment:
-    - GF_SECURITY_ADMIN_PASSWORD=copypasta
+    - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
 ```
+
+> **Local access:** Grafana is mapped to port 3001 (to avoid conflict with frontend's 3000). Open `http://localhost:3001` and login with the password from your `.env` file (or default `admin`).
 
 ### Step 7: Deploy to Azure (Self-Hosted)
 
@@ -222,7 +224,7 @@ grafana:
 **Grafana Container App:**
 - Image: custom (Dockerfile in `infra/grafana/`) with provisioning baked in
 - Ingress: **external** (browser access, protected by admin password)
-- Admin password: via `GRAFANA_ADMIN_PASSWORD` env var (same pattern as PG)
+- Admin password: via `GF_SECURITY_ADMIN_PASSWORD` env var (Grafana's native variable)
 - Datasource: points to Prometheus internal URL (`http://prometheus:9090`)
 - Min replicas: 0, Max: 1 (scale to zero when idle)
 - CPU: 0.25, Memory: 0.5Gi
@@ -294,7 +296,7 @@ This is intentionally deferred: for a single-service app, Prometheus metrics + r
 | `LOG_FORMAT` | `json` | `json` or `text` |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `APP_VERSION` | `dev` | Fallback if not injected via `-ldflags "-X main.version=..."` at build time |
-| `GRAFANA_ADMIN_PASSWORD` | (required for Azure) | Grafana admin login |
+| `GF_SECURITY_ADMIN_PASSWORD` | `admin` (local) | Grafana admin login (Grafana's native env var) |
 
 ---
 

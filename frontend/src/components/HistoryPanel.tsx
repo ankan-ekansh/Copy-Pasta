@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { listPastas, deletePasta, setPublic, type Pasta } from '../api/pastas';
 
@@ -33,6 +33,7 @@ function reducer(state: State, action: Action): State {
 
 export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
   const [state, dispatch] = useReducer(reducer, { pastas: [], loading: true, error: '', deleteError: '', publishError: '' });
+  const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -59,12 +60,20 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
   };
 
   const handleTogglePublic = async (id: string, currentlyPublic: boolean) => {
+    if (publishingIds.has(id)) return;
+    setPublishingIds(prev => new Set(prev).add(id));
     dispatch({ type: 'clear-errors' });
     try {
       await setPublic(id, !currentlyPublic);
       dispatch({ type: 'toggle-public', id, isPublic: !currentlyPublic });
     } catch {
       dispatch({ type: 'publish-error', message: 'Failed to update visibility' });
+    } finally {
+      setPublishingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   };
 
@@ -114,6 +123,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
                 type="button"
                 className={`history-btn ${pasta.is_public ? 'history-btn-active' : ''}`}
                 onClick={() => handleTogglePublic(pasta.id, pasta.is_public)}
+                disabled={publishingIds.has(pasta.id)}
                 aria-label={pasta.is_public ? 'Unpublish from gallery' : 'Publish to gallery'}
                 title={pasta.is_public ? 'Published ✓' : 'Publish to gallery'}
               >

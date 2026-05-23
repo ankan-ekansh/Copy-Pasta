@@ -37,6 +37,7 @@ export function Gallery({ onBack }: GalleryProps) {
 
   useEffect(() => {
     let ignore = false;
+    // offset starts at 0; handleLoadMore is only reachable when pastas are loaded
     listGallery(PAGE_SIZE, 0).then(items => {
       if (!ignore) {
         setPastas(items);
@@ -52,7 +53,11 @@ export function Gallery({ onBack }: GalleryProps) {
     return () => { ignore = true; };
   }, []);
 
+  const [likingIds, setLikingIds] = useState<Set<string>>(new Set());
+
   const handleLike = async (id: string, currentlyLiked: boolean) => {
+    if (likingIds.has(id)) return;
+    setLikingIds(prev => new Set(prev).add(id));
     try {
       const result = currentlyLiked
         ? await unlikePasta(id)
@@ -65,6 +70,12 @@ export function Gallery({ onBack }: GalleryProps) {
       ));
     } catch {
       // silently ignore like errors
+    } finally {
+      setLikingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   };
 
@@ -123,6 +134,7 @@ export function Gallery({ onBack }: GalleryProps) {
                   type="button"
                   className={`gallery-like-btn ${pasta.liked_by_me ? 'liked' : ''}`}
                   onClick={() => handleLike(pasta.id, pasta.liked_by_me)}
+                  disabled={likingIds.has(pasta.id)}
                   aria-pressed={pasta.liked_by_me}
                   aria-label={`${pasta.liked_by_me ? 'Unlike' : 'Like'} (${pasta.like_count} likes)`}
                   title={pasta.liked_by_me ? 'Unlike' : 'Like'}

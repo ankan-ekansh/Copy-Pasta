@@ -56,6 +56,7 @@ func (s *PostgresStore) migrate(ctx context.Context) error {
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			PRIMARY KEY (pasta_id, session_id)
 		)`,
+		`CREATE INDEX IF NOT EXISTS idx_likes_session ON likes(session_id)`,
 	}
 	for _, stmt := range statements {
 		if _, err := s.pool.Exec(ctx, stmt); err != nil {

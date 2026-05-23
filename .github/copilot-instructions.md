@@ -43,8 +43,8 @@ Copy-Pasta is a Go (backend) + React (frontend) web app that converts meme image
   - `chore/` — maintenance, config, tooling
   - `infra/` — infrastructure, deployment, CI/CD
 - **Planning and execution are separate PRs:**
-  1. First PR: docs/plan updates (design decisions, options comparison)
-  2. Second PR: implementation (code changes, after plan is merged)
+  1. First PR: documentation updates — `docs/PLAN.md`, `docs/ARCHITECTURE.md` (design decisions, options comparison)
+  2. Second PR: implementation (code changes, after plan PR is merged)
 
 ---
 

@@ -256,12 +256,12 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 
 | Step | Task | Status |
 |------|------|--------|
-| 1 | Add `go-chi/httprate` dependency | ⬜ |
-| 2 | Create `middleware/ratelimit.go` — factory reading env vars | ⬜ |
-| 3 | Create `middleware/ratelimit_test.go` — under/over limit, per-IP isolation | ⬜ |
-| 4 | Wire in `main.go` — stricter on convert, general on all API | ⬜ |
+| 1 | Add `go-chi/httprate` dependency to `backend/go.mod` | ⬜ |
+| 2 | Create `backend/internal/middleware/ratelimit.go` — factory reading env vars | ⬜ |
+| 3 | Create `backend/internal/middleware/ratelimit_test.go` — under/over limit, per-IP isolation | ⬜ |
+| 4 | Wire in `backend/cmd/server/main.go` — stricter on convert, general on all API | ⬜ |
 | 5 | Update `.env.example` with new vars | ⬜ |
-| 6 | Update `docs/ARCHITECTURE.md` footguns table | ⬜ |
+| 6 | Update `docs/ARCHITECTURE.md` footguns table | ✅ |
 
 ### Risks & Mitigations
 
@@ -274,7 +274,7 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 
 ---
 
-## Phase 4b: Distributed Tracing — "See the Waterfall" (Stretch)
+## Phase 4d: Distributed Tracing — "See the Waterfall" (Stretch)
 **Status**: Future  
 **Goal**: Add OpenTelemetry tracing for end-to-end request visibility (frontend → backend → DB).
 

@@ -1,0 +1,84 @@
+package middleware
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/metrics"
+	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
+)
+
+func TestMetrics_RecordsHTTPMetrics(t *testing.T) {
+	// Reset metrics for test isolation
+	metrics.HTTPRequestsTotal.Reset()
+
+	r := chi.NewRouter()
+	r.Use(Metrics)
+	r.Get("/test-endpoint", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("hello"))
+	})
+
+	req := httptest.NewRequest("GET", "/test-endpoint", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Errorf("expected status 201, got %d", rec.Code)
+	}
+
+	// Verify counter was incremented
+	counter, err := metrics.HTTPRequestsTotal.GetMetricWithLabelValues("GET", "/test-endpoint", "201")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
+
+	m := &dto.Metric{}
+	if err := counter.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
+
+	if m.GetCounter().GetValue() != 1 {
+		t.Errorf("expected counter value 1, got %f", m.GetCounter().GetValue())
+	}
+}
+
+func TestMetrics_UnmatchedRoute(t *testing.T) {
+	metrics.HTTPRequestsTotal.Reset()
+
+	r := chi.NewRouter()
+	r.Use(Metrics)
+	r.Get("/known", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	// Hit an unregistered path
+	req := httptest.NewRequest("GET", "/unknown-path", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	// Should use "unmatched" label, not the raw path
+	counter, err := metrics.HTTPRequestsTotal.GetMetricWithLabelValues("GET", "unmatched", "404")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
+
+	m := &dto.Metric{}
+	if err := counter.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
+
+	if m.GetCounter().GetValue() != 1 {
+		t.Errorf("expected counter value 1 for unmatched, got %f", m.GetCounter().GetValue())
+	}
+}
+
+func init() {
+	// Register metrics for tests (idempotent via prometheus.Register)
+	prometheus.Register(metrics.HTTPRequestsTotal)
+	prometheus.Register(metrics.HTTPRequestDuration)
+	prometheus.Register(metrics.HTTPResponseSize)
+}

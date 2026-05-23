@@ -15,8 +15,15 @@ const cookieName = "copy-pasta-session"
 
 // Session is middleware that ensures every request has a session ID.
 // If the cookie is missing, a new UUID is generated and set.
+// Skips paths that don't need sessions (e.g., /metrics for Prometheus scrapes).
 func Session(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip session for internal/infra endpoints
+		if r.URL.Path == "/metrics" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		var sessionID string
 
 		cookie, err := r.Cookie(cookieName)

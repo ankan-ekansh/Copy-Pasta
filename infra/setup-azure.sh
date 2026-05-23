@@ -32,7 +32,8 @@ PG_DB_NAME="copypasta"
 STORAGE_ACCOUNT="${STORAGE_ACCOUNT:-}"
 if [[ -z "$STORAGE_ACCOUNT" ]]; then
   # Derive a unique name: prefix + short hash of subscription ID for global uniqueness
-  SUB_HASH=$(az account show --query id -o tsv 2>/dev/null | md5sum | cut -c1-6)
+  SUB_ID=$(az account show --query id -o tsv)
+  SUB_HASH=$(echo -n "$SUB_ID" | md5sum | cut -c1-6)
   STORAGE_ACCOUNT="copypasta${SUB_HASH}"
 fi
 # Validate Azure storage account naming rules (3-24 chars, lowercase alphanumeric only)
@@ -377,6 +378,7 @@ else
 fi
 
 # Ensure persistent volume is attached (idempotent — runs on both create and update)
+# Include env vars in container spec to avoid wiping them during YAML patch
 echo "  Attaching persistent storage to Prometheus..."
 az containerapp update \
   --name "$PROMETHEUS_APP" \
@@ -391,6 +393,11 @@ properties:
     containers:
       - name: $PROMETHEUS_APP
         image: $PROMETHEUS_IMAGE
+        env:
+          - name: METRICS_TOKEN
+            secretRef: metrics-token
+          - name: SCRAPE_TARGET
+            value: $APP_URL
         volumeMounts:
           - volumeName: promdata
             mountPath: /prometheus

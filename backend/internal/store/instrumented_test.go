@@ -198,6 +198,26 @@ func TestInstrumentedStore_SetPublic_RecordsMetrics(t *testing.T) {
 	}
 }
 
+func TestInstrumentedStore_IsPublicPasta_RecordsMetrics(t *testing.T) {
+	metrics.DBOperationsTotal.Reset()
+
+	inner := &mockStore{}
+	s := NewInstrumented(inner)
+	_ = s.IsPublicPasta(context.Background(), "any-id")
+
+	counter, err := metrics.DBOperationsTotal.GetMetricWithLabelValues("is_public_pasta", "success")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
+	m := &dto.Metric{}
+	if err := counter.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
+	if m.GetCounter().GetValue() != 1 {
+		t.Errorf("expected 1 is_public_pasta success, got %f", m.GetCounter().GetValue())
+	}
+}
+
 func TestInstrumentedStore_Ping_DelegatesToInner(t *testing.T) {
 	inner := &mockPingStore{pingErr: nil}
 	s := NewInstrumented(inner).(*InstrumentedStore)

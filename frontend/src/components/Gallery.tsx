@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { listGallery, likePasta, unlikePasta, type GalleryPasta } from '../api/gallery';
 
 interface GalleryProps {
@@ -54,10 +54,12 @@ export function Gallery({ onBack }: GalleryProps) {
   }, []);
 
   const [likingIds, setLikingIds] = useState<Set<string>>(new Set());
+  const likingRef = useRef<Set<string>>(new Set());
 
   const handleLike = async (id: string, currentlyLiked: boolean) => {
-    if (likingIds.has(id)) return;
-    setLikingIds(prev => new Set(prev).add(id));
+    if (likingRef.current.has(id)) return;
+    likingRef.current.add(id);
+    setLikingIds(new Set(likingRef.current));
     try {
       const result = currentlyLiked
         ? await unlikePasta(id)
@@ -71,11 +73,8 @@ export function Gallery({ onBack }: GalleryProps) {
     } catch {
       // silently ignore like errors
     } finally {
-      setLikingIds(prev => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      likingRef.current.delete(id);
+      setLikingIds(new Set(likingRef.current));
     }
   };
 

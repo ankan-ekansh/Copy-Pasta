@@ -144,7 +144,9 @@ func (s *PostgresStore) SetPublicByOwner(ctx context.Context, id, sessionID stri
 	}
 	// Clear likes when unpublishing so social state doesn't persist across toggles
 	if !isPublic {
-		_, _ = s.pool.Exec(ctx, "DELETE FROM likes WHERE pasta_id = $1", id)
+		if _, err := s.pool.Exec(ctx, "DELETE FROM likes WHERE pasta_id = $1", id); err != nil {
+			return err
+		}
 	}
 	return nil
 }

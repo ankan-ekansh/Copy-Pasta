@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useReducer, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { listPastas, deletePasta, setPublic, type Pasta } from '../api/pastas';
 
@@ -34,6 +34,7 @@ function reducer(state: State, action: Action): State {
 export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
   const [state, dispatch] = useReducer(reducer, { pastas: [], loading: true, error: '', deleteError: '', publishError: '' });
   const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set());
+  const publishingRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -60,8 +61,9 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
   };
 
   const handleTogglePublic = async (id: string, currentlyPublic: boolean) => {
-    if (publishingIds.has(id)) return;
-    setPublishingIds(prev => new Set(prev).add(id));
+    if (publishingRef.current.has(id)) return;
+    publishingRef.current.add(id);
+    setPublishingIds(new Set(publishingRef.current));
     dispatch({ type: 'clear-errors' });
     try {
       await setPublic(id, !currentlyPublic);
@@ -69,11 +71,8 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
     } catch {
       dispatch({ type: 'publish-error', message: 'Failed to update visibility' });
     } finally {
-      setPublishingIds(prev => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      publishingRef.current.delete(id);
+      setPublishingIds(new Set(publishingRef.current));
     }
   };
 

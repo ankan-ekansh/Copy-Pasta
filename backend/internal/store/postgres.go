@@ -135,7 +135,13 @@ func (s *PostgresStore) DeleteByOwner(ctx context.Context, id, sessionID string)
 }
 
 func (s *PostgresStore) SetPublicByOwner(ctx context.Context, id, sessionID string, isPublic bool) error {
-	result, err := s.pool.Exec(ctx, "UPDATE pastas SET is_public = $1 WHERE id = $2 AND session_id = $3", isPublic, id, sessionID)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	result, err := tx.Exec(ctx, "UPDATE pastas SET is_public = $1 WHERE id = $2 AND session_id = $3", isPublic, id, sessionID)
 	if err != nil {
 		return err
 	}
@@ -144,11 +150,11 @@ func (s *PostgresStore) SetPublicByOwner(ctx context.Context, id, sessionID stri
 	}
 	// Clear likes when unpublishing so social state doesn't persist across toggles
 	if !isPublic {
-		if _, err := s.pool.Exec(ctx, "DELETE FROM likes WHERE pasta_id = $1", id); err != nil {
+		if _, err := tx.Exec(ctx, "DELETE FROM likes WHERE pasta_id = $1", id); err != nil {
 			return err
 		}
 	}
-	return nil
+	return tx.Commit(ctx)
 }
 
 func (s *PostgresStore) ListPublic(ctx context.Context, sessionID string, limit, offset int) ([]GalleryPasta, error) {

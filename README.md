@@ -78,13 +78,15 @@ make docker-up-obs
 Requires `EXPOSE_METRICS=true` in `.env` (enables the `/metrics` endpoint on the backend).
 
 **Available metrics:**
-| Metric | Type | Description |
-|--------|------|-------------|
-| `http_requests_total` | Counter | Total HTTP requests by method, route, status |
-| `http_request_duration_seconds` | Histogram | Request latency by route |
-| `conversions_total` | Counter | Total image conversions by mode |
-| `conversion_duration_seconds` | Histogram | Conversion processing time |
-| `db_operation_duration_seconds` | Histogram | Database operation latency |
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `http_requests_total` | Counter | method, route, status | Total HTTP requests |
+| `http_request_duration_seconds` | Histogram | method, route | Request latency |
+| `http_response_size_bytes` | Histogram | method, route | Response body size |
+| `conversions_total` | Counter | mode | Image conversions count |
+| `conversion_duration_seconds` | Histogram | mode | Conversion processing time |
+| `db_operations_total` | Counter | operation, status | Database operation count |
+| `db_operation_duration_seconds` | Histogram | operation | Database operation latency |
 
 ## 📁 Project Structure
 

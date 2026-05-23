@@ -26,15 +26,20 @@ func RequestLog(next http.Handler) http.Handler {
 			}
 		}
 
-		slog.Info("request completed",
+		attrs := []any{
 			"request_id", GetRequestID(r.Context()),
 			"method", r.Method,
 			"route", routePattern,
-			"path", r.URL.Path,
 			"status", ww.Status(),
 			"latency_ms", time.Since(start).Milliseconds(),
 			"bytes", ww.BytesWritten(),
 			"remote_addr", r.RemoteAddr,
-		)
+		}
+		// Only include raw path for unmatched routes (debugging unknown endpoints)
+		if routePattern == "unmatched" {
+			attrs = append(attrs, "path", r.URL.Path)
+		}
+
+		slog.Info("request completed", attrs...)
 	})
 }

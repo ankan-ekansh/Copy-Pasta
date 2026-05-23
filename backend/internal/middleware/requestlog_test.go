@@ -62,6 +62,10 @@ func TestRequestLog_CapturesStatusAndBytes(t *testing.T) {
 	if _, ok := entry["latency_ms"]; !ok {
 		t.Error("expected latency_ms in log")
 	}
+	// path should NOT be present for matched routes (cardinality safety)
+	if _, ok := entry["path"]; ok {
+		t.Error("path field should not be present for matched routes")
+	}
 }
 
 func TestRequestLog_IncludesRequestIDFromContext(t *testing.T) {

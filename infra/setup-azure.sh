@@ -349,7 +349,7 @@ docker push "$GRAFANA_IMAGE"
 if az containerapp show --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
   echo "  📈 Prometheus app '$PROMETHEUS_APP' already exists — updating image."
   az containerapp secret set --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GROUP" \
-    --secrets "metrics-token=$METRICS_TOKEN" --output none 2>/dev/null || true
+    --secrets "metrics-token=$METRICS_TOKEN" --output none
   az containerapp update \
     --name "$PROMETHEUS_APP" \
     --resource-group "$RESOURCE_GROUP" \

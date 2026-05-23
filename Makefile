@@ -1,4 +1,4 @@
-.PHONY: dev dev-backend dev-frontend build docker-up docker-down clean
+.PHONY: dev dev-backend dev-frontend build docker-up docker-up-obs docker-down clean
 
 # Run both backend and frontend in dev mode
 dev:
@@ -22,6 +22,9 @@ docker-up:
 
 docker-down:
 	docker compose down
+
+docker-up-obs:
+	docker compose --profile observability up --build
 
 docker-up-d:
 	docker compose up --build -d

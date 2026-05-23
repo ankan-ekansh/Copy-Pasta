@@ -52,7 +52,7 @@ echo "ACR:            $ACR_NAME.azurecr.io"
 echo ""
 
 # --- Step 0: Register required resource providers ---
-PROVIDERS=("Microsoft.App" "Microsoft.OperationalInsights" "Microsoft.ContainerRegistry" "Microsoft.DBforPostgreSQL")
+PROVIDERS=("Microsoft.App" "Microsoft.OperationalInsights" "Microsoft.ContainerRegistry" "Microsoft.DBforPostgreSQL" "Microsoft.Storage")
 for provider in "${PROVIDERS[@]}"; do
   state=$(az provider show --namespace "$provider" --query "registrationState" -o tsv || echo "NotRegistered")
   if [ "$state" != "Registered" ]; then

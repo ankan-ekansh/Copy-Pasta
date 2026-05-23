@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/subtle"
 	"io/fs"
 	"log/slog"
@@ -125,7 +126,9 @@ func spaFileServer(root fs.FS) http.HandlerFunc {
 
 // requireBearerToken wraps a handler to require a valid Authorization: Bearer <token> header.
 // The scheme comparison is case-insensitive per RFC 7235.
+// Compares SHA-256 digests to ensure constant-time regardless of input length.
 func requireBearerToken(token string, next http.Handler) http.Handler {
+	expectedHash := sha256.Sum256([]byte(token))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
 		// RFC 7235: auth scheme is case-insensitive
@@ -134,8 +137,8 @@ func requireBearerToken(token string, next http.Handler) http.Handler {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		provided := auth[7:]
-		if subtle.ConstantTimeCompare([]byte(provided), []byte(token)) != 1 {
+		providedHash := sha256.Sum256([]byte(auth[7:]))
+		if subtle.ConstantTimeCompare(expectedHash[:], providedHash[:]) != 1 {
 			w.Header().Set("WWW-Authenticate", "Bearer")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

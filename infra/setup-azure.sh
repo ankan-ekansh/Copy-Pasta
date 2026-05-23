@@ -288,8 +288,10 @@ echo "📊 Setting up observability stack..."
 # Token stored as Container Apps secret; reused if already exists.
 echo "  Enabling metrics endpoint on main app..."
 # Check if metrics token secret already exists (avoid rotation/downtime)
-if az containerapp secret list --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
-  --query "[?name=='metrics-token'].name" -o tsv | grep -q metrics-token; then
+# Capture list output separately so CLI failures (auth/timeout) fail fast via set -e
+SECRET_LIST=$(az containerapp secret list --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+  --query "[?name=='metrics-token'].name" -o tsv)
+if echo "$SECRET_LIST" | grep -q metrics-token; then
   EXISTING_TOKEN=$(az containerapp secret show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
     --secret-name metrics-token --query value -o tsv)
 else

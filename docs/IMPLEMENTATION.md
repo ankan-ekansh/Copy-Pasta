@@ -118,7 +118,7 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 
 ### Handler: `backend/internal/handler/gallery.go`
 - `GET /api/gallery` — public gallery listing (paginated, includes like counts and `liked_by_me`)
-- `POST /api/pastas/:id/like` — like a public pasta (idempotent, enforces is_public)
+- `POST /api/pastas/:id/like` — like a public pasta (idempotent, checks is_public at statement level)
 - `DELETE /api/pastas/:id/like` — unlike a pasta (checks IsPublicPasta first)
 
 ### Middleware: `backend/internal/middleware/middleware.go`
@@ -168,7 +168,7 @@ Global middleware chain (in order):
 
 **Gallery & Likes (Phase 5):**
 - `ListPublic` uses a CTE (`WITH page AS (...)`) for pagination + LEFT JOIN on likes for counts and `liked_by_me`
-- `LikePasta` uses `INSERT...SELECT WHERE is_public=TRUE` — enforces "only public pastas can be liked" at the SQL level
+- `LikePasta` uses `INSERT...SELECT WHERE is_public=TRUE` — prevents liking non-public pastas within the statement (note: concurrent unpublish can still race under MVCC)
 - `SetPublicByOwner` wraps in a transaction: UPDATE pasta → DELETE likes (on unpublish). Atomic.
 - `IsPublicPasta` is a lightweight `SELECT EXISTS(...)` check — used by the unlike handler to avoid loading full art
 - Schema includes `likes` table: `(pasta_id, session_id)` composite primary key + `idx_likes_session` index on `(session_id)`

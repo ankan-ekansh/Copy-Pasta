@@ -26,7 +26,7 @@ Copy-Pasta converts meme images into ASCII/Braille art. The stack:
 4. Result stored in PostgreSQL (session-scoped ownership)
 5. User can list, share (make public), or delete their pastas
 6. Public pastas appear in the gallery (`GET /api/gallery`) with like counts
-7. Users can like/unlike public pastas; likes are cleared atomically on unpublish
+7. Users can like/unlike public pastas; likes are cleared as part of unpublish (transactional)
 
 ## Key Design Decisions
 
@@ -39,8 +39,8 @@ Copy-Pasta converts meme images into ASCII/Braille art. The stack:
 | Compose profiles | Keep base stack minimal; observability is opt-in |
 | Braille conversion | Higher fidelity than traditional ASCII — each char encodes 2×4 pixel block |
 | CTE pagination for gallery | Separates row selection from aggregation; cleaner query, predictable performance |
-| Transactional unpublish | Atomic unpublish + clear likes ensures consistency — no window where likes exist on a non-public pasta |
-| SQL-enforced public gate | `INSERT...SELECT WHERE is_public=TRUE` — impossible to like a non-public pasta even with race conditions |
+| Transactional unpublish | Atomic unpublish + clear likes reduces the window for stale likes on non-public pastas (concurrent like/unpublish can still race under MVCC) |
+| SQL-gated like insert | `INSERT...SELECT WHERE is_public=TRUE` — prevents liking non-public pastas within a single statement (not a cross-transaction guarantee) |
 | useRef for in-flight guards | Synchronous check prevents double-clicks without waiting for React re-render |
 
 ---
@@ -59,7 +59,7 @@ These are architectural choices that can bite you if you're unaware. **Keep this
 | API prefix | Frontend assumes all backend routes are under `/api/` | Never mount handlers outside `/api/` (except `/metrics`) |
 | SPA routing | nginx `try_files` falls back to `index.html` | Backend's `NotFound` handler also does SPA fallback — don't add catch-all routes |
 | InstrumentedStore | Must wrap ALL Store methods | If `Store` interface gains a new method, `InstrumentedStore` must be updated or it won't compile |
-| Likes & public gating | Only public pastas can be liked (`INSERT...SELECT WHERE is_public=TRUE`) | Unpublishing clears all likes in same transaction; unlike checks `IsPublicPasta` first |
+| Likes & public gating | Like insert checks `is_public=TRUE` at statement level; unpublish clears likes transactionally | Concurrent like/unpublish can race under MVCC — a stale like is possible but harmless (gallery only shows public pastas) |
 | SetPublicByOwner | Wrapped in a transaction (UPDATE + DELETE likes on unpublish) | Adding logic between the two statements can break atomicity |
 | Gallery pagination | CTE-based with LEFT JOIN on likes | Changing the GROUP BY or ORDER BY requires matching CTE columns |
 | Docker Compose env | Interpolates ALL env vars regardless of active profiles | `${VAR:?}` syntax breaks `docker compose config` even for inactive-profile services |

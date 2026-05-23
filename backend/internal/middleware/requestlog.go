@@ -19,7 +19,7 @@ func RequestLog(next http.Handler) http.Handler {
 		next.ServeHTTP(ww, r)
 
 		// Use Chi's route pattern to avoid unbounded label cardinality
-		routePattern := r.URL.Path
+		routePattern := "unmatched"
 		if rctx := chi.RouteContext(r.Context()); rctx != nil {
 			if pattern := rctx.RoutePattern(); pattern != "" {
 				routePattern = pattern

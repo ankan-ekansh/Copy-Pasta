@@ -15,7 +15,9 @@ import (
 func TestRequestLog_CapturesStatusAndBytes(t *testing.T) {
 	var buf bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buf, nil))
+	old := slog.Default()
 	slog.SetDefault(logger)
+	t.Cleanup(func() { slog.SetDefault(old) })
 
 	// Set up chi router so RouteContext is available
 	r := chi.NewRouter()
@@ -65,7 +67,9 @@ func TestRequestLog_CapturesStatusAndBytes(t *testing.T) {
 func TestRequestLog_IncludesRequestIDFromContext(t *testing.T) {
 	var buf bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buf, nil))
+	old := slog.Default()
 	slog.SetDefault(logger)
+	t.Cleanup(func() { slog.SetDefault(old) })
 
 	customID := "my-custom-id-123"
 

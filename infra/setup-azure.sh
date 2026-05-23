@@ -236,7 +236,7 @@ if [ -n "${PG_ADMIN_PASSWORD:-}" ]; then
   az containerapp update \
     --name "$CONTAINER_APP_NAME" \
     --resource-group "$RESOURCE_GROUP" \
-    --set-env-vars "DATABASE_URL=secretref:database-url" \
+    --set-env-vars "DATABASE_URL=secretref:database-url" "TRUSTED_PROXY=true" \
     --output none
 else
   # Verify the secret and env var binding exist when skipping password setup
@@ -254,7 +254,7 @@ else
     az containerapp update \
       --name "$CONTAINER_APP_NAME" \
       --resource-group "$RESOURCE_GROUP" \
-      --set-env-vars "DATABASE_URL=secretref:database-url" \
+      --set-env-vars "DATABASE_URL=secretref:database-url" "TRUSTED_PROXY=true" \
       --output none
   fi
 fi

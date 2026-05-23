@@ -138,8 +138,8 @@ Global middleware chain (in order):
 - Returns 429 with JSON `{"error": "rate limit exceeded, try again later"}`.
 
 **Trust model:**
-- **Docker Compose** (`TRUSTED_PROXY=true`): nginx overwrites `X-Real-IP` and `X-Forwarded-For` with `$remote_addr`, so client-supplied values are discarded. RealIP middleware + `WithKeyByRealIP()` are safe.
-- **Azure** (`TRUSTED_PROXY=true`): Container Apps ingress overwrites `X-Forwarded-For` at the edge.
+- **Docker Compose** (`TRUSTED_PROXY=true`): Backend port is not published — only reachable via nginx (port 3000). Nginx overwrites `X-Real-IP` and `X-Forwarded-For` with `$remote_addr`, so client-supplied values are discarded. RealIP middleware + `WithKeyByRealIP()` are safe.
+- **Azure** (`TRUSTED_PROXY=true`, set by `infra/setup-azure.sh`): Container Apps ingress overwrites `X-Forwarded-For` at the edge. The env var is set alongside `DATABASE_URL` during provisioning.
 - **Local dev** (`make dev-backend`, `TRUSTED_PROXY` unset): RealIP middleware is skipped, rate limiting uses `RemoteAddr` directly. No spoofing possible.
 
 ### Metrics: `backend/internal/metrics/`
@@ -240,8 +240,7 @@ Or use: `make dev` (runs both in parallel)
 ### Option 2: Docker Compose
 ```bash
 make docker-up
-# Frontend at http://localhost:3000
-# Backend at http://localhost:8080
+# App at http://localhost:3000 (nginx proxies /api to backend internally)
 ```
 
 ---

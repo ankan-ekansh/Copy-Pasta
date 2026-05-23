@@ -49,7 +49,7 @@ These are architectural choices that can bite you if you're unaware. **Keep this
 | CORS | Origins hardcoded + `CORS_ORIGINS` env override | New domains require updating the default list or setting the env var |
 | Session cookie | 1-year expiry, `Secure` only when TLS detected | On plain HTTP (local dev), cookie is not Secure — fine for dev, not for prod without TLS |
 | Store.Ping() | Not part of the `Store` interface — exposed via type assertion | Adding a new Store implementation? Must also add `Ping()` or health reports "unknown" |
-| Rate limiting | In-memory, per-IP via `go-chi/httprate` | 10 req/min on `/api/convert`, 100 req/min on other API routes. Resets on restart. Not shared across replicas. Configurable via `RATE_LIMIT_CONVERT` and `RATE_LIMIT_API` env vars. |
+| Rate limiting | In-memory, per-IP via `go-chi/httprate` | 10 req/min on `/api/convert`, 100 req/min on general API routes (separate groups — not double-applied). Resets on restart. Not shared across replicas. Requires `TRUSTED_PROXY=true` when behind a proxy; keys on `RemoteAddr` otherwise. |
 | API prefix | Frontend assumes all backend routes are under `/api/` | Never mount handlers outside `/api/` (except `/metrics`) |
 | SPA routing | nginx `try_files` falls back to `index.html` | Backend's `NotFound` handler also does SPA fallback — don't add catch-all routes |
 | InstrumentedStore | Must wrap ALL Store methods | If `Store` interface gains a new method, `InstrumentedStore` must be updated or it won't compile |

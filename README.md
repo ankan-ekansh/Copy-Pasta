@@ -57,7 +57,7 @@ make dev-frontend  # Vite dev server on :5173 (proxies /api to :8080)
 ```bash
 # Full stack with PostgreSQL (recommended for testing persistence)
 docker compose up
-# Frontend: http://localhost:3000 | API: http://localhost:8080
+# App: http://localhost:3000 (nginx proxies /api to backend internally)
 
 # Single unified container (same as production, no DB)
 docker build -t copy-pasta .

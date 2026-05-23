@@ -87,6 +87,7 @@ function App() {
           <span>🎚️ Width controls</span>
           <span>🌗 Invert mode</span>
           <button
+            type="button"
             className={`nav-badge ${view === 'gallery' ? 'active' : ''}`}
             onClick={() => setView(view === 'gallery' ? 'app' : 'gallery')}
           >

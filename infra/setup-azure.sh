@@ -54,7 +54,7 @@ echo ""
 # --- Step 0: Register required resource providers ---
 PROVIDERS=("Microsoft.App" "Microsoft.OperationalInsights" "Microsoft.ContainerRegistry" "Microsoft.DBforPostgreSQL" "Microsoft.Storage")
 for provider in "${PROVIDERS[@]}"; do
-  state=$(az provider show --namespace "$provider" --query "registrationState" -o tsv || echo "NotRegistered")
+  state=$(az provider show --namespace "$provider" --query "registrationState" -o tsv)
   if [ "$state" != "Registered" ]; then
     echo "🔧 Registering resource provider $provider..."
     az provider register -n "$provider" --wait
@@ -473,7 +473,7 @@ else
 fi
 
 GRAFANA_URL=$(az containerapp show --name "$GRAFANA_APP" --resource-group "$RESOURCE_GROUP" \
-  --query "properties.configuration.ingress.fqdn" -o tsv || echo "pending")
+  --query "properties.configuration.ingress.fqdn" -o tsv)
 
 echo ""
 echo "✅ Infrastructure ready!"

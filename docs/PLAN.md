@@ -226,6 +226,54 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 
 ---
 
+## Phase 4c: Rate Limiting — "Don't Get Spammed"
+**Status**: Planned  
+**Goal**: Protect CPU-intensive conversion endpoint from abuse without impeding legitimate users.
+
+### Options Evaluated
+
+| Option | Algorithm | Pros | Cons | Verdict |
+|--------|-----------|------|------|---------|
+| **`go-chi/httprate`** | Sliding window, in-memory | Chi-native, auto IP cleanup, rate-limit headers, per-route scoping | One dep; in-memory resets on restart | ✅ Chosen |
+| `golang.org/x/time/rate` | Token bucket, in-memory | Zero deps, stdlib-adjacent | Manual IP map management, cleanup goroutine, no headers | ❌ More code for same result |
+| Redis + sliding window | Centralized counter | Accurate across replicas, survives restarts | Adds Redis infra, overkill at max 3 replicas | ❌ Over-engineered |
+| Azure Front Door / API Mgmt | Edge throttling | Zero code, handles DDoS | ~$35/mo min, vendor lock-in, out-of-repo config | ❌ Too costly for toy project |
+| nginx `limit_req` | Leaky bucket at proxy | Battle-tested | No standalone proxy in prod (Container Apps ingress) | ❌ Infeasible in prod |
+
+### Design Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Library | `go-chi/httprate` | First-party Chi middleware, handles all boilerplate |
+| Scope | Per-IP | Simple, effective for single-origin abuse |
+| Convert limit | 10 req/min | CPU-heavy; 10/min is generous for real use |
+| General API limit | 100 req/min | Reads are cheap; protect against scraping |
+| Configuration | Env vars (`RATE_LIMIT_CONVERT`, `RATE_LIMIT_API`) | Tunable per environment without redeploy |
+| Multi-replica gap | Accepted | Max 3 replicas × 10 = 30 worst case; ceiling is low |
+| Response | 429 + JSON + standard headers | `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After` |
+
+### Implementation Steps
+
+| Step | Task | Status |
+|------|------|--------|
+| 1 | Add `go-chi/httprate` dependency | ⬜ |
+| 2 | Create `middleware/ratelimit.go` — factory reading env vars | ⬜ |
+| 3 | Create `middleware/ratelimit_test.go` — under/over limit, per-IP isolation | ⬜ |
+| 4 | Wire in `main.go` — stricter on convert, general on all API | ⬜ |
+| 5 | Update `.env.example` with new vars | ⬜ |
+| 6 | Update `docs/ARCHITECTURE.md` footguns table | ⬜ |
+
+### Risks & Mitigations
+
+| Risk | Mitigation |
+|------|------------|
+| Shared IP (NAT/VPN) hits limit | 10/min is generous; tunable via env var |
+| Attacker rotates IPs | Damage ceiling is low (max 3 replicas × CPU cap) |
+| State lost on restart | Acceptable — no persistent abuse tracking needed |
+| X-Forwarded-For spoofing | httprate uses rightmost non-private IP; Azure sets real client IP |
+
+---
+
 ## Phase 4b: Distributed Tracing — "See the Waterfall" (Stretch)
 **Status**: Future  
 **Goal**: Add OpenTelemetry tracing for end-to-end request visibility (frontend → backend → DB).

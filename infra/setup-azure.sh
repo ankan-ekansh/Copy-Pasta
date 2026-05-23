@@ -347,9 +347,9 @@ az containerapp env storage set \
   --access-mode ReadWrite \
   --output none
 
-# Build and push Prometheus image
+# Build and push Prometheus image (linux/amd64 required by Azure Container Apps)
 echo "  Building Prometheus image..."
-docker build -t "$PROMETHEUS_IMAGE" -f infra/prometheus/Dockerfile \
+docker build --platform linux/amd64 -t "$PROMETHEUS_IMAGE" -f infra/prometheus/Dockerfile \
   --build-arg CONFIG_FILE=prometheus-azure.yml \
   infra/prometheus/
 az acr login --name "$ACR_NAME" --output none
@@ -357,7 +357,7 @@ docker push "$PROMETHEUS_IMAGE"
 
 # Build and push Grafana image
 echo "  Building Grafana image..."
-docker build -t "$GRAFANA_IMAGE" \
+docker build --platform linux/amd64 -t "$GRAFANA_IMAGE" \
   --build-arg PROVISIONING_DIR=provisioning-azure \
   infra/grafana/
 docker push "$GRAFANA_IMAGE"

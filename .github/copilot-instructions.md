@@ -34,6 +34,18 @@ Copy-Pasta is a Go (backend) + React (frontend) web app that converts meme image
 - Keep functions focused and small
 - Prefer returning early over deep nesting
 
+### Git Workflow
+
+- **Never commit directly to `main`** — always use a branch + PR
+- **Branch naming:** `type/short-description` where type is one of:
+  - `feat/` — new features or enhancements
+  - `docs/` — documentation-only changes
+  - `chore/` — maintenance, config, tooling
+  - `infra/` — infrastructure, deployment, CI/CD
+- **Planning and execution are separate PRs:**
+  1. First PR: docs/plan updates (design decisions, options comparison)
+  2. Second PR: implementation (code changes, after plan is merged)
+
 ---
 
 ## Architecture Rules
@@ -103,6 +115,10 @@ Simulate a reviewer reading your diff:
 - For each file referenced in docs: verify it exists
 - For each behavioral claim: verify with a test or mental walkthrough
 - Ask: "What would break if someone followed these docs exactly?"
+
+### 6. Keep Instructions Current
+
+If your work reveals a convention not documented in this file, or contradicts an existing instruction, update `copilot-instructions.md` or `docs/ARCHITECTURE.md` in the same PR. Treat these files as living documentation — they evolve with the code.
 
 ---
 

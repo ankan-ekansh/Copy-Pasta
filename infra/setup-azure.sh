@@ -283,13 +283,22 @@ echo ""
 echo "📊 Setting up observability stack..."
 
 # Ensure the main app exposes /metrics for Prometheus to scrape (token-protected).
-# METRICS_TOKEN prevents public access to /metrics on externally-ingressed apps.
+# Token stored as Container Apps secret; reused if already exists.
 echo "  Enabling metrics endpoint on main app..."
-METRICS_TOKEN=$(openssl rand -hex 16)
+EXISTING_TOKEN=$(az containerapp secret show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+  --secret-name metrics-token --query value -o tsv 2>/dev/null || echo "")
+if [[ -n "$EXISTING_TOKEN" ]]; then
+  METRICS_TOKEN="$EXISTING_TOKEN"
+  echo "  Reusing existing metrics token."
+else
+  METRICS_TOKEN=$(openssl rand -hex 16)
+  az containerapp secret set --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+    --secrets "metrics-token=$METRICS_TOKEN" --output none
+fi
 az containerapp update \
   --name "$CONTAINER_APP_NAME" \
   --resource-group "$RESOURCE_GROUP" \
-  --set-env-vars "EXPOSE_METRICS=true" "METRICS_TOKEN=$METRICS_TOKEN" \
+  --set-env-vars "EXPOSE_METRICS=true" "METRICS_TOKEN=secretref:metrics-token" \
   --output none
 
 # Create Azure Files share for Prometheus data persistence
@@ -339,11 +348,13 @@ docker push "$GRAFANA_IMAGE"
 # Deploy Prometheus (internal only, with persistent storage)
 if az containerapp show --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
   echo "  📈 Prometheus app '$PROMETHEUS_APP' already exists — updating image."
+  az containerapp secret set --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GROUP" \
+    --secrets "metrics-token=$METRICS_TOKEN" --output none 2>/dev/null || true
   az containerapp update \
     --name "$PROMETHEUS_APP" \
     --resource-group "$RESOURCE_GROUP" \
     --image "$PROMETHEUS_IMAGE" \
-    --set-env-vars "METRICS_TOKEN=$METRICS_TOKEN" "SCRAPE_TARGET=$APP_URL" \
+    --set-env-vars "METRICS_TOKEN=secretref:metrics-token" "SCRAPE_TARGET=$APP_URL" \
     --output none
 else
   echo "  📈 Creating Prometheus Container App (internal only)..."
@@ -360,7 +371,8 @@ else
     --registry-server "$ACR_LOGIN_SERVER" \
     --registry-username "$ACR_USERNAME" \
     --registry-password "$ACR_PASSWORD" \
-    --env-vars "METRICS_TOKEN=$METRICS_TOKEN" "SCRAPE_TARGET=$APP_URL" \
+    --secrets "metrics-token=$METRICS_TOKEN" \
+    --env-vars "METRICS_TOKEN=secretref:metrics-token" "SCRAPE_TARGET=$APP_URL" \
     --output none
 fi
 

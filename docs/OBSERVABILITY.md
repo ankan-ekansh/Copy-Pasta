@@ -100,8 +100,9 @@ Replace `log.Printf` with Go stdlib `log/slog` (available since Go 1.21, we're o
 - `backend/internal/middleware/requestid.go` — generates UUID, sets `X-Request-ID` header, stores in context
 
 **Behavior:**
-- If incoming request has `X-Request-ID`, reuse it (for correlation across services)
-- Otherwise generate a new one
+- If incoming request has `X-Request-ID`, validate and reuse it (for correlation across services)
+- **Validation:** max 64 characters, alphanumeric + hyphens only (`^[a-zA-Z0-9\-]{1,64}$`). Reject invalid values silently (generate a new ID instead).
+- Otherwise generate a new UUID v4
 - All log entries for that request include `request_id` field
 
 ### Step 3: Custom Access Log Middleware
@@ -162,13 +163,15 @@ Replace `log.Printf` with Go stdlib `log/slog` (available since Go 1.21, we're o
 
 | Metric | Type | Labels | Description |
 |--------|------|--------|-------------|
-| `http_requests_total` | Counter | method, path, status | Total HTTP requests |
-| `http_request_duration_seconds` | Histogram | method, path | Request latency |
-| `http_response_size_bytes` | Histogram | method, path | Response size |
+| `http_requests_total` | Counter | method, route, status | Total HTTP requests |
+| `http_request_duration_seconds` | Histogram | method, route | Request latency |
+| `http_response_size_bytes` | Histogram | method, route | Response size |
 | `conversions_total` | Counter | mode (ascii/braille) | Conversion count |
 | `conversion_duration_seconds` | Histogram | mode | Conversion processing time |
 | `db_operations_total` | Counter | operation, status | DB query count |
 | `db_operation_duration_seconds` | Histogram | operation | DB query latency |
+
+> **Note:** The `route` label uses the registered route pattern (e.g., `/api/pastas/{id}`), **not** the raw URL path. This prevents unbounded cardinality from dynamic path segments. Chi's `RouteContext` provides the pattern at middleware level.
 
 **Modified files:**
 - `backend/cmd/server/main.go` — mount `/metrics` endpoint
@@ -223,10 +226,16 @@ grafana:
 
 **Grafana Container App:**
 - Image: custom (Dockerfile in `infra/grafana/`) with provisioning baked in
-- Ingress: **external** (browser access, protected by admin password)
+- Ingress: **external** (browser access)
 - Min replicas: 0, Max: 1 (scale to zero when idle)
 - CPU: 0.25, Memory: 0.5Gi
 - Datasource: points to Prometheus internal URL (`http://prometheus:9090`)
+
+**Grafana hardening:**
+- `GF_SECURITY_ADMIN_PASSWORD` stored as Container Apps secret (40-char hex)
+- `GF_AUTH_ANONYMOUS_ENABLED=false` (explicitly disable anonymous access)
+- `GF_USERS_ALLOW_SIGN_UP=false` (no self-registration)
+- Future upgrade path: Azure AD OAuth via `GF_AUTH_AZUREAD_*` or IP allowlist on ingress
 
 **Grafana secret setup (in `infra/setup-azure.sh`):**
 ```bash

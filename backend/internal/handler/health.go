@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -31,7 +32,6 @@ type richHealthResponse struct {
 type checkResult struct {
 	Status    string `json:"status"`
 	LatencyMs int64  `json:"latency_ms,omitempty"`
-	Error     string `json:"error,omitempty"`
 }
 
 func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +79,8 @@ func checkDB(ctx context.Context, s interface{}) *checkResult {
 	latency := time.Since(start).Milliseconds()
 
 	if err != nil {
-		return &checkResult{Status: "down", LatencyMs: latency, Error: err.Error()}
+		slog.Error("health check: database ping failed", "error", err, "latency_ms", latency)
+		return &checkResult{Status: "down", LatencyMs: latency}
 	}
 	return &checkResult{Status: "up", LatencyMs: latency}
 }

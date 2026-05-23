@@ -9,4 +9,4 @@ scrape_configs:
     authorization:
       credentials_file: /etc/prometheus/metrics-token
     static_configs:
-      - targets: ['SCRAPE_TARGET_PLACEHOLDER']
+      - targets: ['SCRAPE_TARGET_PLACEHOLDER:443']

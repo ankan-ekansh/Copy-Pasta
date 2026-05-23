@@ -29,8 +29,8 @@ IMAGE_TAG="latest"
 PG_SERVER_NAME="pg-sv-copy-pasta"
 PG_ADMIN_USER="copypasta"
 PG_DB_NAME="copypasta"
-STORAGE_ACCOUNT="${STORAGE_ACCOUNT:-copypasta${RESOURCE_GROUP//[^a-z0-9]/}}"  # must be globally unique
-STORAGE_ACCOUNT="${STORAGE_ACCOUNT:0:24}"  # max 24 chars
+STORAGE_ACCOUNT="${STORAGE_ACCOUNT:-copypasta$(echo "${RESOURCE_GROUP}" | tr '[:upper:]' '[:lower:]' | tr -cd '[:lower:][:digit:]')}"
+STORAGE_ACCOUNT="${STORAGE_ACCOUNT:0:24}"  # max 24 chars, must be globally unique
 
 echo "🍝 Copy-Pasta Azure Infrastructure Setup"
 echo "========================================="
@@ -266,13 +266,16 @@ fi
 # =============================================================================
 PROMETHEUS_APP="prometheus-copy-pasta"
 GRAFANA_APP="grafana-copy-pasta"
-PROMETHEUS_IMAGE="$ACR_LOGIN_SERVER/prometheus-copy-pasta:latest"
-GRAFANA_IMAGE="$ACR_LOGIN_SERVER/grafana-copy-pasta:latest"
+PROMETHEUS_IMAGE="$ACR_LOGIN_SERVER/prometheus-copy-pasta:$IMAGE_TAG"
+GRAFANA_IMAGE="$ACR_LOGIN_SERVER/grafana-copy-pasta:$IMAGE_TAG"
 
 echo ""
 echo "📊 Setting up observability stack..."
 
-# Ensure the main app exposes /metrics for Prometheus to scrape
+# Ensure the main app exposes /metrics for Prometheus to scrape.
+# NOTE: On Azure with external ingress, /metrics is publicly reachable.
+# This is acceptable for this project (metrics contain only operational counters).
+# For production-sensitive deployments, add bearer token auth to the metrics endpoint.
 echo "  Enabling metrics endpoint on main app..."
 az containerapp update \
   --name "$CONTAINER_APP_NAME" \

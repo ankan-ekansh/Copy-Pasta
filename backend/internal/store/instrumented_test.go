@@ -233,7 +233,13 @@ func TestInstrumentedStore_Duration_Recorded(t *testing.T) {
 		t.Fatalf("failed to get metric: %v", err)
 	}
 	m := &dto.Metric{}
-	observer.(interface{ Write(*dto.Metric) error }).Write(m)
+	writer, ok := observer.(interface{ Write(*dto.Metric) error })
+	if !ok {
+		t.Fatal("observer does not implement Write")
+	}
+	if err := writer.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
 
 	if m.GetHistogram().GetSampleCount() != 1 {
 		t.Errorf("expected 1 duration observation, got %d", m.GetHistogram().GetSampleCount())

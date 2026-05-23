@@ -78,7 +78,7 @@ func (s *InstrumentedStore) Ping(ctx context.Context) error {
 func (s *InstrumentedStore) record(operation string, start time.Time, err error) {
 	duration := time.Since(start).Seconds()
 	status := "success"
-	if err != nil && err != ErrNotFound {
+	if err != nil && !errors.Is(err, ErrNotFound) {
 		status = "error"
 	}
 	metrics.DBOperationsTotal.WithLabelValues(operation, status).Inc()

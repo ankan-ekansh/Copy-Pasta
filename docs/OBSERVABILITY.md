@@ -9,7 +9,7 @@
 | Health check | `{"status":"ok"}` (no dependency checks) | DB ping, version, uptime, dependency status |
 | Metrics | None | Prometheus counters + histograms |
 | Dashboards | None | Grafana with pre-built panels |
-| Request tracing | None | X-Request-ID propagation across logs |
+| Request correlation | None | X-Request-ID propagation across logs (not distributed tracing) |
 
 ---
 
@@ -100,7 +100,7 @@ Replace `log.Printf` with Go stdlib `log/slog` (available since Go 1.21, we're o
 - `backend/internal/middleware/requestid.go` — generates UUID, sets `X-Request-ID` header, stores in context
 
 **Behavior:**
-- If incoming request has `X-Request-ID`, reuse it (for tracing across services)
+- If incoming request has `X-Request-ID`, reuse it (for correlation across services)
 - Otherwise generate a new one
 - All log entries for that request include `request_id` field
 
@@ -146,7 +146,7 @@ Replace `log.Printf` with Go stdlib `log/slog` (available since Go 1.21, we're o
 
 **Implementation:**
 - DB ping with 2s timeout
-- Version injected via `go build -ldflags "-X main.version=$(git rev-parse --short HEAD)"`
+- Version injected via `go build -ldflags "-X main.version=$(git rev-parse --short HEAD)"`; falls back to `APP_VERSION` env var (default: `dev`)
 - Uptime tracked from `time.Now()` at startup
 - Returns HTTP 503 if any critical check fails (useful for Container Apps health probes)
 
@@ -189,14 +189,14 @@ Replace `log.Printf` with Go stdlib `log/slog` (available since Go 1.21, we're o
 **Docker Compose additions:**
 ```yaml
 prometheus:
-  image: prom/prometheus:latest
+  image: prom/prometheus:v2.53.0
   volumes:
     - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
   ports:
     - "9090:9090"
 
 grafana:
-  image: grafana/grafana:latest
+  image: grafana/grafana:11.1.0
   volumes:
     - ./infra/grafana/provisioning:/etc/grafana/provisioning
     - ./infra/grafana/dashboards:/var/lib/grafana/dashboards
@@ -212,7 +212,7 @@ grafana:
 - `infra/setup-azure.sh` — add Steps 7-8 for Prometheus + Grafana Container Apps
 
 **Prometheus Container App:**
-- Image: `prom/prometheus:latest`
+- Image: `prom/prometheus:v2.53.0`
 - Ingress: **internal only** (not exposed to internet)
 - Volume: Azure Files for data persistence
 - Config: baked into a custom image (Dockerfile in `infra/prometheus/`)
@@ -280,7 +280,7 @@ Step 1 (slog) → Step 2 (request ID) → Step 3 (access log) → Step 4 (health
 |----------|---------|-------------|
 | `LOG_FORMAT` | `json` | `json` or `text` |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
-| `APP_VERSION` | `dev` | Set via `-ldflags` at build time |
+| `APP_VERSION` | `dev` | Fallback if not injected via `-ldflags "-X main.version=..."` at build time |
 | `GRAFANA_ADMIN_PASSWORD` | (required for Azure) | Grafana admin login |
 
 ---

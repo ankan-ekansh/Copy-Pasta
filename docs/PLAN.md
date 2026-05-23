@@ -209,7 +209,7 @@ CREATE INDEX idx_pastas_public ON pastas(is_public, created_at);
 
 ## Phase 4: Observability — "See What's Happening"
 **Status**: Planned  
-**Goal**: Structured logging, metrics, dashboards, and request tracing.
+**Goal**: Structured logging, metrics, dashboards, and request correlation (X-Request-ID).
 
 | Task | Status |
 |------|--------|

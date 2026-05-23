@@ -196,8 +196,8 @@ Replace `log.Printf` with Go stdlib `log/slog` (available since Go 1.21, we're o
 **New files:**
 - `infra/prometheus/prometheus.yml` — scrape config
 - `infra/grafana/provisioning/datasources/prometheus.yml` — auto-provision datasource
-- `infra/grafana/provisioning/dashboards/dashboard.yml` — auto-load dashboards
-- `infra/grafana/dashboards/copy-pasta.json` — pre-built dashboard
+- `infra/grafana/provisioning/dashboards/dashboard.yml` — auto-load dashboards from disk
+- `infra/grafana/dashboards/.gitkeep` — placeholder (dashboard JSON added in Step 8)
 
 **Modified files:**
 - `docker-compose.yml` — add `prometheus` + `grafana` services under `observability` profile

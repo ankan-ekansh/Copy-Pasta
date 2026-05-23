@@ -312,6 +312,7 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 | Task | Status |
 |------|--------|
 | Image size/format validation hardening | ⬜ |
+| Gallery API pagination: preview-only list + on-demand full art | ⬜ |
 | Graceful shutdown | ⬜ |
 | Database migrations (golang-migrate) | ⬜ |
 | Auto-scaling rules (Azure Container Apps) | ⬜ |

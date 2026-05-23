@@ -87,7 +87,7 @@ export function Gallery({ onBack }: GalleryProps) {
 
       {error && <div className="gallery-error">{error}</div>}
 
-      {pastas.length === 0 && !loading && (
+      {pastas.length === 0 && !loading && !error && (
         <div className="gallery-empty">
           <p>No public pastas yet. Be the first to publish! 🎨</p>
           <p className="gallery-empty-hint">Use the "Publish" button on your pastas to share them here.</p>

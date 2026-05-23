@@ -131,6 +131,16 @@ func (h *Handler) UnlikePasta(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Verify pasta exists before unlike (unlike has no FK check)
+	if _, err := h.store.Get(r.Context(), id); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "pasta not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
 	if err := h.store.UnlikePasta(r.Context(), id, sessionID); err != nil {
 		writeError(w, http.StatusInternalServerError, "internal server error")
 		return

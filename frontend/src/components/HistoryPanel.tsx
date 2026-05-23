@@ -59,6 +59,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
   };
 
   const handleTogglePublic = async (id: string, currentlyPublic: boolean) => {
+    dispatch({ type: 'clear-delete-error' });
     try {
       await setPublic(id, !currentlyPublic);
       dispatch({ type: 'toggle-public', id, isPublic: !currentlyPublic });

@@ -10,11 +10,15 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
+// metricsPath is the path used by Prometheus to scrape metrics.
+// Shared between middleware that needs to skip this path.
+const metricsPath = "/metrics"
+
 // Metrics records HTTP request metrics (count, duration, response size) for Prometheus.
 func Metrics(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Skip instrumentation for the metrics endpoint itself to avoid inflating counts.
-		if r.URL.Path == "/metrics" {
+		if r.URL.Path == metricsPath {
 			next.ServeHTTP(w, r)
 			return
 		}

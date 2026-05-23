@@ -19,7 +19,7 @@ const cookieName = "copy-pasta-session"
 func Session(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Skip session for internal/infra endpoints
-		if r.URL.Path == "/metrics" {
+		if r.URL.Path == metricsPath {
 			next.ServeHTTP(w, r)
 			return
 		}

@@ -141,3 +141,8 @@ func (s *PostgresStore) SetPublicByOwner(ctx context.Context, id, sessionID stri
 func (s *PostgresStore) Close() {
 	s.pool.Close()
 }
+
+// Ping checks database connectivity.
+func (s *PostgresStore) Ping(ctx context.Context) error {
+	return s.pool.Ping(ctx)
+}

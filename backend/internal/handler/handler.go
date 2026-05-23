@@ -5,7 +5,7 @@ import (
 	"errors"
 	"image"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -37,10 +37,6 @@ type convertResponse struct {
 	ASCII  string `json:"ascii"`
 	Width  int    `json:"width"`
 	Height int    `json:"height"`
-}
-
-type healthResponse struct {
-	Status string `json:"status"`
 }
 
 type errorResponse struct {
@@ -255,7 +251,8 @@ func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {
 		sessionID := appmiddleware.GetSessionID(r.Context())
 		id, idErr := store.GenerateID()
 		if idErr != nil {
-			log.Printf("failed to generate pasta ID: %v", idErr)
+			slog.Error("failed to generate pasta ID", "error", idErr,
+				"request_id", appmiddleware.GetRequestID(r.Context()))
 		} else {
 			pasta := &store.Pasta{
 				ID:        id,
@@ -266,7 +263,8 @@ func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {
 				Mode:      mode,
 			}
 			if err := h.store.Save(r.Context(), pasta); err != nil {
-				log.Printf("failed to save pasta: %v", err)
+				slog.Error("failed to save pasta", "error", err,
+					"request_id", appmiddleware.GetRequestID(r.Context()))
 			} else {
 				pastaID = pasta.ID
 			}
@@ -279,10 +277,6 @@ func (h *Handler) Convert(w http.ResponseWriter, r *http.Request) {
 		Width:  width,
 		Height: height,
 	})
-}
-
-func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, healthResponse{Status: "ok"})
 }
 
 func readField(part io.Reader) (string, error) {

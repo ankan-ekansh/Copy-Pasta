@@ -64,6 +64,10 @@ type Store interface {
 	// GetLikeCount returns the like count for a pasta and whether the session liked it.
 	GetLikeCount(ctx context.Context, pastaID, sessionID string) (count int, likedByMe bool, err error)
 
+	// IsPublicPasta checks if a pasta exists and is public.
+	// Returns ErrNotFound if the pasta doesn't exist or isn't public.
+	IsPublicPasta(ctx context.Context, id string) error
+
 	// Close releases any resources held by the store.
 	Close()
 }

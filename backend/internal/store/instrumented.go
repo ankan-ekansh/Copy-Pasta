@@ -84,6 +84,13 @@ func (s *InstrumentedStore) GetLikeCount(ctx context.Context, pastaID, sessionID
 	return count, liked, err
 }
 
+func (s *InstrumentedStore) IsPublicPasta(ctx context.Context, id string) error {
+	start := time.Now()
+	err := s.inner.IsPublicPasta(ctx, id)
+	s.record("is_public_pasta", start, err)
+	return err
+}
+
 func (s *InstrumentedStore) Close() {
 	s.inner.Close()
 }

@@ -100,7 +100,7 @@ func (h *Handler) LikePasta(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	count, _, err := h.store.GetLikeCount(r.Context(), id, sessionID)
+	count, likedByMe, err := h.store.GetLikeCount(r.Context(), id, sessionID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
@@ -108,7 +108,7 @@ func (h *Handler) LikePasta(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"like_count":  count,
-		"liked_by_me": true,
+		"liked_by_me": likedByMe,
 	})
 }
 
@@ -131,18 +131,13 @@ func (h *Handler) UnlikePasta(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify pasta exists and is public before unlike
-	pasta, err := h.store.Get(r.Context(), id)
-	if err != nil {
+	// Verify pasta exists and is public (lightweight check, no ascii_art fetch)
+	if err := h.store.IsPublicPasta(r.Context(), id); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "pasta not found")
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "internal server error")
-		return
-	}
-	if !pasta.IsPublic {
-		writeError(w, http.StatusNotFound, "pasta not found")
 		return
 	}
 
@@ -151,7 +146,7 @@ func (h *Handler) UnlikePasta(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	count, _, err := h.store.GetLikeCount(r.Context(), id, sessionID)
+	count, likedByMe, err := h.store.GetLikeCount(r.Context(), id, sessionID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
@@ -159,6 +154,6 @@ func (h *Handler) UnlikePasta(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"like_count":  count,
-		"liked_by_me": false,
+		"liked_by_me": likedByMe,
 	})
 }

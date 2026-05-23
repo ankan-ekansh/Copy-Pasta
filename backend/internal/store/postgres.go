@@ -202,9 +202,12 @@ func (s *PostgresStore) LikePasta(ctx context.Context, pastaID, sessionID string
 	if result.RowsAffected() == 0 {
 		// Check if it's already liked (ON CONFLICT DO NOTHING)
 		var exists bool
-		_ = s.pool.QueryRow(ctx,
+		err = s.pool.QueryRow(ctx,
 			"SELECT EXISTS(SELECT 1 FROM likes WHERE pasta_id = $1 AND session_id = $2)",
 			pastaID, sessionID).Scan(&exists)
+		if err != nil {
+			return err
+		}
 		if exists {
 			return nil // idempotent: already liked
 		}
@@ -232,6 +235,20 @@ func (s *PostgresStore) GetLikeCount(ctx context.Context, pastaID, sessionID str
 		return 0, false, err
 	}
 	return count, likedByMe, nil
+}
+
+func (s *PostgresStore) IsPublicPasta(ctx context.Context, id string) error {
+	var exists bool
+	err := s.pool.QueryRow(ctx,
+		"SELECT EXISTS(SELECT 1 FROM pastas WHERE id = $1 AND is_public = TRUE)",
+		id).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (s *PostgresStore) Close() {

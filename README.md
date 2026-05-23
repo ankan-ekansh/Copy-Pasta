@@ -65,6 +65,29 @@ docker run -p 8080:8080 copy-pasta
 # App: http://localhost:8080
 ```
 
+### Observability
+
+```bash
+# Full stack + Prometheus + Grafana
+make docker-up-obs
+# App:        http://localhost:3000
+# Prometheus: http://localhost:9090
+# Grafana:    http://localhost:3001 (admin / $GF_SECURITY_ADMIN_PASSWORD, default: changeme)
+```
+
+Requires `EXPOSE_METRICS=true` in `.env`. Set `GF_SECURITY_ADMIN_PASSWORD` in `.env` to change the Grafana password.
+
+**Available metrics:**
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `http_requests_total` | Counter | method, route, status | Total HTTP requests |
+| `http_request_duration_seconds` | Histogram | method, route | Request latency |
+| `http_response_size_bytes` | Histogram | method, route | Response body size |
+| `conversions_total` | Counter | mode | Image conversions count |
+| `conversion_duration_seconds` | Histogram | mode | Conversion processing time |
+| `db_operations_total` | Counter | operation, status | Database operation count |
+| `db_operation_duration_seconds` | Histogram | operation | Database operation latency |
+
 ## 📁 Project Structure
 
 ```
@@ -74,7 +97,7 @@ Copy-Pasta/
 │   └── internal/
 │       ├── handler/        # HTTP handlers (convert, pastas management)
 │       ├── converter/      # Image → ASCII/Braille engine
-│       ├── middleware/     # CORS, logging, session cookies
+│       ├── middleware/     # CORS, rate limiting, logging, metrics, session cookies
 │       └── store/          # PostgreSQL persistence (pgx/v5)
 ├── frontend/
 │   ├── src/
@@ -104,9 +127,10 @@ Copy-Pasta/
 - [x] **Phase 2**: Polish — paste, drag-drop, braille mode, dithering, presets, dark/light theme
 - [x] **Phase 2.5**: Deploy — Azure Container Apps, CI/CD, GitHub Actions
 - [x] **Phase 3**: Persistence — PostgreSQL, session cookies, shareable URLs, history panel, share page
-- [ ] **Phase 4**: Observability — logging, tracing, metrics
-- [ ] **Phase 5**: Social — gallery, likes, leaderboard
-- [ ] **Phase 6**: Production hardening — rate limiting, scaling, CDN
+- [x] **Phase 4a-c**: Observability — structured logging, Prometheus metrics, rate limiting
+- [ ] **Phase 4d**: Distributed tracing (OpenTelemetry, Jaeger/Tempo)
+- [ ] **Phase 5**: Social — public gallery, OG meta share cards, likes, leaderboard
+- [ ] **Phase 6**: Production hardening — graceful shutdown, migrations, CDN, alerting
 
 See **[docs/PLAN.md](docs/PLAN.md)** for detailed task tracking.
 

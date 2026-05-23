@@ -209,15 +209,36 @@ CREATE INDEX idx_pastas_public ON pastas(is_public, created_at);
 
 ## Phase 4: Observability — "See What's Happening"
 **Status**: Planned  
-**Goal**: Structured logging, metrics, and tracing.
+**Goal**: Structured logging, metrics, dashboards, and request correlation (X-Request-ID).
 
 | Task | Status |
 |------|--------|
-| Structured logging (slog/zerolog) | ⬜ |
-| OpenTelemetry tracing | ⬜ |
+| Structured logging (slog) | ⬜ |
+| Request ID middleware | ⬜ |
+| Rich health endpoint (DB check, version, uptime) | ⬜ |
 | Prometheus metrics (`/metrics`) | ⬜ |
-| Grafana + Prometheus in Docker Compose | ⬜ |
-| Health check endpoint (`GET /api/health`) | ✅ |
+| Local observability stack (docker-compose) | ⬜ |
+| Production Prometheus + Grafana | ⬜ |
+| Pre-built Grafana dashboard | ⬜ |
+| Documentation | ⬜ |
+
+See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation plan.
+
+---
+
+## Phase 4b: Distributed Tracing — "See the Waterfall" (Stretch)
+**Status**: Future  
+**Goal**: Add OpenTelemetry tracing for end-to-end request visibility (frontend → backend → DB).
+
+| Task | Status |
+|------|--------|
+| OpenTelemetry SDK integration (Go) | ⬜ |
+| Trace propagation (W3C TraceContext headers) | ⬜ |
+| DB span instrumentation | ⬜ |
+| Jaeger or Tempo as trace backend | ⬜ |
+| Trace → Request ID correlation | ⬜ |
+
+> **Note**: Phase 4 adds X-Request-ID correlation, which covers our current needs. Distributed tracing becomes valuable when we add async workers, multiple services, or need per-request latency breakdowns. The request IDs from Phase 4 will serve as correlation keys in traces.
 
 ---
 

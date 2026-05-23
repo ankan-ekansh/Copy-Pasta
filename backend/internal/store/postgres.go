@@ -48,6 +48,13 @@ func (s *PostgresStore) migrate(ctx context.Context) error {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_pastas_session ON pastas(session_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_pastas_public ON pastas(is_public, created_at)`,
+		`CREATE TABLE IF NOT EXISTS likes (
+			pasta_id TEXT NOT NULL REFERENCES pastas(id) ON DELETE CASCADE,
+			session_id TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			PRIMARY KEY (pasta_id, session_id)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_likes_session ON likes(session_id)`,
 	}
 	for _, stmt := range statements {
 		if _, err := s.pool.Exec(ctx, stmt); err != nil {
@@ -128,11 +135,136 @@ func (s *PostgresStore) DeleteByOwner(ctx context.Context, id, sessionID string)
 }
 
 func (s *PostgresStore) SetPublicByOwner(ctx context.Context, id, sessionID string, isPublic bool) error {
-	result, err := s.pool.Exec(ctx, "UPDATE pastas SET is_public = $1 WHERE id = $2 AND session_id = $3", isPublic, id, sessionID)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	result, err := tx.Exec(ctx, "UPDATE pastas SET is_public = $1 WHERE id = $2 AND session_id = $3", isPublic, id, sessionID)
 	if err != nil {
 		return err
 	}
 	if result.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	// Clear likes when unpublishing so social state doesn't persist across toggles
+	if !isPublic {
+		if _, err := tx.Exec(ctx, "DELETE FROM likes WHERE pasta_id = $1", id); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+func (s *PostgresStore) ListPublic(ctx context.Context, sessionID string, limit, offset int) ([]GalleryPasta, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	// CTE paginates pastas first, then LEFT JOIN likes only for the page.
+	query := `
+		WITH page AS (
+			SELECT id, ascii_art, width, height, mode, created_at
+			FROM pastas
+			WHERE is_public = TRUE
+			ORDER BY created_at DESC
+			LIMIT $1 OFFSET $2
+		)
+		SELECT page.id, page.ascii_art, page.width, page.height, page.mode, page.created_at,
+			COUNT(l.session_id) AS like_count,
+			COALESCE(BOOL_OR(l.session_id = $3), FALSE) AS liked_by_me
+		FROM page
+		LEFT JOIN likes l ON l.pasta_id = page.id
+		GROUP BY page.id, page.ascii_art, page.width, page.height, page.mode, page.created_at
+		ORDER BY page.created_at DESC
+	`
+	rows, err := s.pool.Query(ctx, query, limit, offset, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var pastas []GalleryPasta
+	for rows.Next() {
+		var gp GalleryPasta
+		if err := rows.Scan(&gp.ID, &gp.ASCIIArt, &gp.Width, &gp.Height,
+			&gp.Mode, &gp.CreatedAt, &gp.LikeCount, &gp.LikedByMe); err != nil {
+			return nil, err
+		}
+		gp.IsPublic = true
+		pastas = append(pastas, gp)
+	}
+	return pastas, rows.Err()
+}
+
+func (s *PostgresStore) LikePasta(ctx context.Context, pastaID, sessionID string) error {
+	result, err := s.pool.Exec(ctx,
+		`INSERT INTO likes (pasta_id, session_id)
+		 SELECT $1, $2 FROM pastas WHERE id = $1 AND is_public = TRUE
+		 ON CONFLICT DO NOTHING`,
+		pastaID, sessionID)
+	if err != nil {
+		return err
+	}
+	// No row inserted means pasta doesn't exist, isn't public, or already liked
+	if result.RowsAffected() == 0 {
+		// Check if already liked AND pasta is still public
+		var exists bool
+		err = s.pool.QueryRow(ctx,
+			`SELECT EXISTS(
+				SELECT 1 FROM likes l
+				JOIN pastas p ON p.id = l.pasta_id
+				WHERE l.pasta_id = $1 AND l.session_id = $2 AND p.is_public = TRUE
+			)`,
+			pastaID, sessionID).Scan(&exists)
+		if err != nil {
+			return err
+		}
+		if exists {
+			return nil // idempotent: already liked and pasta is still public
+		}
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *PostgresStore) UnlikePasta(ctx context.Context, pastaID, sessionID string) error {
+	_, err := s.pool.Exec(ctx,
+		"DELETE FROM likes WHERE pasta_id = $1 AND session_id = $2",
+		pastaID, sessionID)
+	return err
+}
+
+func (s *PostgresStore) GetLikeCount(ctx context.Context, pastaID, sessionID string) (int, bool, error) {
+	var count int
+	var likedByMe bool
+	err := s.pool.QueryRow(ctx, `
+		SELECT 
+			(SELECT COUNT(*) FROM likes WHERE pasta_id = $1),
+			EXISTS(SELECT 1 FROM likes WHERE pasta_id = $1 AND session_id = $2)
+	`, pastaID, sessionID).Scan(&count, &likedByMe)
+	if err != nil {
+		return 0, false, err
+	}
+	return count, likedByMe, nil
+}
+
+func (s *PostgresStore) IsPublicPasta(ctx context.Context, id string) error {
+	var exists bool
+	err := s.pool.QueryRow(ctx,
+		"SELECT EXISTS(SELECT 1 FROM pastas WHERE id = $1 AND is_public = TRUE)",
+		id).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if !exists {
 		return ErrNotFound
 	}
 	return nil

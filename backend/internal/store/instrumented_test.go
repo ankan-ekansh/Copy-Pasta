@@ -11,26 +11,43 @@ import (
 
 // mockStore implements Store for testing InstrumentedStore.
 type mockStore struct {
-	saveErr      error
-	getResult    *Pasta
-	getErr       error
-	listResult   []Pasta
-	listErr      error
-	deleteErr    error
-	setPublicErr error
-	closed       bool
+	saveErr          error
+	getResult        *Pasta
+	getErr           error
+	listResult       []Pasta
+	listErr          error
+	deleteErr        error
+	setPublicErr     error
+	listPublicResult []GalleryPasta
+	listPublicErr    error
+	likeErr          error
+	unlikeErr        error
+	likeCount        int
+	likedByMe        bool
+	likeCountErr     error
+	isPublicErr      error
+	closed           bool
 }
 
-func (m *mockStore) Save(_ context.Context, _ *Pasta) error              { return m.saveErr }
-func (m *mockStore) Get(_ context.Context, _ string) (*Pasta, error)     { return m.getResult, m.getErr }
+func (m *mockStore) Save(_ context.Context, _ *Pasta) error          { return m.saveErr }
+func (m *mockStore) Get(_ context.Context, _ string) (*Pasta, error) { return m.getResult, m.getErr }
 func (m *mockStore) ListBySession(_ context.Context, _ string, _, _ int) ([]Pasta, error) {
 	return m.listResult, m.listErr
 }
-func (m *mockStore) DeleteByOwner(_ context.Context, _, _ string) error  { return m.deleteErr }
+func (m *mockStore) ListPublic(_ context.Context, _ string, _, _ int) ([]GalleryPasta, error) {
+	return m.listPublicResult, m.listPublicErr
+}
+func (m *mockStore) DeleteByOwner(_ context.Context, _, _ string) error { return m.deleteErr }
 func (m *mockStore) SetPublicByOwner(_ context.Context, _, _ string, _ bool) error {
 	return m.setPublicErr
 }
-func (m *mockStore) Close() { m.closed = true }
+func (m *mockStore) LikePasta(_ context.Context, _, _ string) error   { return m.likeErr }
+func (m *mockStore) UnlikePasta(_ context.Context, _, _ string) error { return m.unlikeErr }
+func (m *mockStore) GetLikeCount(_ context.Context, _, _ string) (int, bool, error) {
+	return m.likeCount, m.likedByMe, m.likeCountErr
+}
+func (m *mockStore) IsPublicPasta(_ context.Context, _ string) error { return m.isPublicErr }
+func (m *mockStore) Close()                                          { m.closed = true }
 
 // mockPingStore adds Ping support.
 type mockPingStore struct {
@@ -181,6 +198,26 @@ func TestInstrumentedStore_SetPublic_RecordsMetrics(t *testing.T) {
 	}
 }
 
+func TestInstrumentedStore_IsPublicPasta_RecordsMetrics(t *testing.T) {
+	metrics.DBOperationsTotal.Reset()
+
+	inner := &mockStore{}
+	s := NewInstrumented(inner)
+	_ = s.IsPublicPasta(context.Background(), "any-id")
+
+	counter, err := metrics.DBOperationsTotal.GetMetricWithLabelValues("is_public_pasta", "success")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
+	m := &dto.Metric{}
+	if err := counter.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
+	if m.GetCounter().GetValue() != 1 {
+		t.Errorf("expected 1 is_public_pasta success, got %f", m.GetCounter().GetValue())
+	}
+}
+
 func TestInstrumentedStore_Ping_DelegatesToInner(t *testing.T) {
 	inner := &mockPingStore{pingErr: nil}
 	s := NewInstrumented(inner).(*InstrumentedStore)
@@ -242,6 +279,132 @@ func TestInstrumentedStore_Duration_Recorded(t *testing.T) {
 
 	if m.GetHistogram().GetSampleCount() != 1 {
 		t.Errorf("expected 1 duration observation, got %d", m.GetHistogram().GetSampleCount())
+	}
+}
+
+func TestInstrumentedStore_ListPublic_RecordsMetrics(t *testing.T) {
+	metrics.DBOperationsTotal.Reset()
+
+	inner := &mockStore{listPublicResult: []GalleryPasta{{ID: "a"}}}
+	s := NewInstrumented(inner)
+
+	pastas, err := s.ListPublic(context.Background(), "sess", 10, 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(pastas) != 1 {
+		t.Errorf("expected 1 pasta, got %d", len(pastas))
+	}
+
+	counter, err := metrics.DBOperationsTotal.GetMetricWithLabelValues("list_public", "success")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
+	m := &dto.Metric{}
+	if err := counter.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
+	if m.GetCounter().GetValue() != 1 {
+		t.Errorf("expected 1 list_public success, got %f", m.GetCounter().GetValue())
+	}
+}
+
+func TestInstrumentedStore_LikePasta_RecordsMetrics(t *testing.T) {
+	metrics.DBOperationsTotal.Reset()
+
+	inner := &mockStore{}
+	s := NewInstrumented(inner)
+
+	err := s.LikePasta(context.Background(), "pasta1", "sess1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	counter, err := metrics.DBOperationsTotal.GetMetricWithLabelValues("like", "success")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
+	m := &dto.Metric{}
+	if err := counter.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
+	if m.GetCounter().GetValue() != 1 {
+		t.Errorf("expected 1 like success, got %f", m.GetCounter().GetValue())
+	}
+}
+
+func TestInstrumentedStore_UnlikePasta_RecordsMetrics(t *testing.T) {
+	metrics.DBOperationsTotal.Reset()
+
+	inner := &mockStore{}
+	s := NewInstrumented(inner)
+
+	err := s.UnlikePasta(context.Background(), "pasta1", "sess1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	counter, err := metrics.DBOperationsTotal.GetMetricWithLabelValues("unlike", "success")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
+	m := &dto.Metric{}
+	if err := counter.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
+	if m.GetCounter().GetValue() != 1 {
+		t.Errorf("expected 1 unlike success, got %f", m.GetCounter().GetValue())
+	}
+}
+
+func TestInstrumentedStore_GetLikeCount_RecordsMetrics(t *testing.T) {
+	metrics.DBOperationsTotal.Reset()
+
+	inner := &mockStore{likeCount: 5, likedByMe: true}
+	s := NewInstrumented(inner)
+
+	count, liked, err := s.GetLikeCount(context.Background(), "pasta1", "sess1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if count != 5 || !liked {
+		t.Errorf("expected count=5 liked=true, got count=%d liked=%v", count, liked)
+	}
+
+	counter, err := metrics.DBOperationsTotal.GetMetricWithLabelValues("get_like_count", "success")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
+	m := &dto.Metric{}
+	if err := counter.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
+	if m.GetCounter().GetValue() != 1 {
+		t.Errorf("expected 1 get_like_count success, got %f", m.GetCounter().GetValue())
+	}
+}
+
+func TestInstrumentedStore_LikePasta_Error_RecordsErrorStatus(t *testing.T) {
+	metrics.DBOperationsTotal.Reset()
+
+	inner := &mockStore{likeErr: errors.New("db down")}
+	s := NewInstrumented(inner)
+
+	err := s.LikePasta(context.Background(), "pasta1", "sess1")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	counter, err := metrics.DBOperationsTotal.GetMetricWithLabelValues("like", "error")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
+	m := &dto.Metric{}
+	if err := counter.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
+	if m.GetCounter().GetValue() != 1 {
+		t.Errorf("expected 1 like error, got %f", m.GetCounter().GetValue())
 	}
 }
 

@@ -4,6 +4,7 @@ import { AsciiOutput } from './components/AsciiOutput';
 import { ImageUploader } from './components/ImageUploader';
 import { HistoryPanel } from './components/HistoryPanel';
 import { ThemeToggle } from './components/ThemeToggle';
+import { Gallery } from './components/Gallery';
 import './App.css';
 
 const DEFAULT_WIDTH = 150;
@@ -34,6 +35,7 @@ function App() {
   const [error, setError] = useState('');
   const [isConverting, setIsConverting] = useState(false);
   const [historyRefresh, setHistoryRefresh] = useState(0);
+  const [view, setView] = useState<'app' | 'gallery'>('app');
 
   const shareUrl = result?.id
     ? `${window.location.origin}/pasta/${encodeURIComponent(result.id)}`
@@ -80,13 +82,24 @@ function App() {
             nerdy text art.
           </p>
         </div>
-        <div className="hero-badges" aria-label="App features">
+        <div className="hero-badges" aria-label="App features and navigation">
           <span>📋 Paste friendly</span>
           <span>🎚️ Width controls</span>
           <span>🌗 Invert mode</span>
+          <button
+            type="button"
+            className={`nav-badge ${view === 'gallery' ? 'active' : ''}`}
+            onClick={() => setView(view === 'gallery' ? 'app' : 'gallery')}
+            aria-pressed={view === 'gallery'}
+          >
+            🖼️ Gallery
+          </button>
         </div>
       </header>
 
+      {view === 'gallery' ? (
+        <Gallery onBack={() => setView('app')} />
+      ) : (
       <main className="app-grid">
         <div className="panel-stack">
           <ImageUploader
@@ -251,6 +264,7 @@ function App() {
           <HistoryPanel refreshTrigger={historyRefresh} />
         </div>
       </main>
+      )}
     </div>
   );
 }

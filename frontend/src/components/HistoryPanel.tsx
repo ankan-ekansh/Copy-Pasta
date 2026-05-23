@@ -1,34 +1,40 @@
-import { useEffect, useReducer } from 'react';
+import { useEffect, useReducer, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { listPastas, deletePasta, type Pasta } from '../api/pastas';
+import { listPastas, deletePasta, setPublic, type Pasta } from '../api/pastas';
 
 interface HistoryPanelProps {
   refreshTrigger?: number;
 }
 
-type State = { pastas: Pasta[]; loading: boolean; error: string; deleteError: string };
+type State = { pastas: Pasta[]; loading: boolean; error: string; deleteError: string; publishError: string };
 type Action =
   | { type: 'fetch' }
   | { type: 'loaded'; pastas: Pasta[] }
   | { type: 'error'; message: string }
   | { type: 'remove'; id: string }
+  | { type: 'toggle-public'; id: string; isPublic: boolean }
   | { type: 'delete-error'; message: string }
-  | { type: 'clear-delete-error' };
+  | { type: 'publish-error'; message: string }
+  | { type: 'clear-errors' };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'fetch': return { ...state, loading: true, error: '', deleteError: '' };
+    case 'fetch': return { ...state, loading: true, error: '', deleteError: '', publishError: '' };
     case 'loaded': return { ...state, pastas: action.pastas, loading: false, error: '' };
     case 'error': return { ...state, loading: false, error: action.message };
     case 'remove': return { ...state, pastas: state.pastas.filter((p) => p.id !== action.id) };
+    case 'toggle-public': return { ...state, pastas: state.pastas.map((p) => p.id === action.id ? { ...p, is_public: action.isPublic } : p) };
     case 'delete-error': return { ...state, deleteError: action.message };
-    case 'clear-delete-error': return { ...state, deleteError: '' };
+    case 'publish-error': return { ...state, publishError: action.message };
+    case 'clear-errors': return { ...state, deleteError: '', publishError: '' };
     default: return state;
   }
 }
 
 export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
-  const [state, dispatch] = useReducer(reducer, { pastas: [], loading: true, error: '', deleteError: '' });
+  const [state, dispatch] = useReducer(reducer, { pastas: [], loading: true, error: '', deleteError: '', publishError: '' });
+  const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set());
+  const publishingRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -41,7 +47,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
 
   const handleDelete = async (id: string) => {
     try {
-      dispatch({ type: 'clear-delete-error' });
+      dispatch({ type: 'clear-errors' });
       await deletePasta(id);
       dispatch({ type: 'remove', id });
     } catch (err) {
@@ -52,6 +58,22 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
   const handleCopyLink = (id: string) => {
     const url = `${window.location.origin}/pasta/${encodeURIComponent(id)}`;
     navigator.clipboard?.writeText(url)?.catch(() => {});
+  };
+
+  const handleTogglePublic = async (id: string, currentlyPublic: boolean) => {
+    if (publishingRef.current.has(id)) return;
+    publishingRef.current.add(id);
+    setPublishingIds(new Set(publishingRef.current));
+    dispatch({ type: 'clear-errors' });
+    try {
+      await setPublic(id, !currentlyPublic);
+      dispatch({ type: 'toggle-public', id, isPublic: !currentlyPublic });
+    } catch {
+      dispatch({ type: 'publish-error', message: 'Failed to update visibility' });
+    } finally {
+      publishingRef.current.delete(id);
+      setPublishingIds(new Set(publishingRef.current));
+    }
   };
 
   if (state.loading) {
@@ -85,6 +107,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
     <section className="history-card">
       <p className="eyebrow">📜 Recent pastas</p>
       {state.deleteError && <p className="error-banner">⚠️ {state.deleteError}</p>}
+      {state.publishError && <p className="error-banner">⚠️ {state.publishError}</p>}
       <ul className="history-list">
         {state.pastas.map((pasta) => (
           <li key={pasta.id} className="history-item">
@@ -95,6 +118,17 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
               </span>
             </div>
             <div className="history-item-actions">
+              <button
+                type="button"
+                className={`history-btn ${pasta.is_public ? 'history-btn-active' : ''}`}
+                onClick={() => handleTogglePublic(pasta.id, pasta.is_public)}
+                disabled={publishingIds.has(pasta.id)}
+                aria-pressed={pasta.is_public}
+                aria-label={pasta.is_public ? 'Unpublish from gallery' : 'Publish to gallery'}
+                title={pasta.is_public ? 'Published ✓' : 'Publish to gallery'}
+              >
+                {pasta.is_public ? '🌐' : '📤'}
+              </button>
               <button
                 type="button"
                 className="history-btn"

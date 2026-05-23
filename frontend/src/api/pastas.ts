@@ -53,3 +53,17 @@ export async function deletePasta(id: string): Promise<void> {
     throw new Error(error.error || 'Delete failed');
   }
 }
+
+export async function setPublic(id: string, isPublic: boolean): Promise<void> {
+  const response = await fetch(`/api/pastas/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_public: isPublic }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: response.statusText || 'Request failed' }));
+    throw new Error(error.error || 'Update failed');
+  }
+}

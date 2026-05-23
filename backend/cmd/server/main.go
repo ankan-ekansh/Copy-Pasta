@@ -55,10 +55,13 @@ func main() {
 		api.Group(func(general chi.Router) {
 			general.Use(appmiddleware.RateLimitAPI())
 			general.Get("/health", h.Health)
+			general.Get("/gallery", h.ListGallery)
 			general.Get("/pastas", h.ListPastas)
 			general.Get("/pastas/{id}", h.GetPasta)
 			general.Delete("/pastas/{id}", h.DeletePasta)
 			general.Patch("/pastas/{id}", h.SetPublic)
+			general.Post("/pastas/{id}/like", h.LikePasta)
+			general.Delete("/pastas/{id}/like", h.UnlikePasta)
 		})
 	})
 

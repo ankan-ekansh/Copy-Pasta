@@ -512,7 +512,7 @@
 
 .history-btn {
   background: none;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
   padding: 0.25rem 0.4rem;
   border-radius: 6px;
@@ -527,6 +527,11 @@
 
 .history-btn-danger:hover {
   background: #f8d7da;
+}
+
+.history-btn-active {
+  background: rgba(46, 204, 113, 0.15);
+  border: 1px solid #2ecc71;
 }
 
 /* PastaView */
@@ -547,4 +552,186 @@
 
 .pasta-view-nav-link {
   text-decoration: none;
+}
+
+/* Gallery */
+.nav-badge {
+  cursor: pointer;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  transition: background 0.2s, border-color 0.2s;
+}
+.nav-badge:hover,
+.nav-badge.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.gallery {
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.gallery-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.gallery-header h2 {
+  margin: 0.5rem 0 0.25rem;
+}
+.gallery-subtitle {
+  color: var(--text-muted);
+  margin: 0;
+}
+.gallery-back-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.gallery-back-btn:hover {
+  background: var(--border);
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.gallery-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.gallery-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.gallery-card-preview {
+  cursor: pointer;
+  padding: 1rem;
+  max-height: 200px;
+  overflow: hidden;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: none;
+}
+.gallery-card-ascii {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 4px;
+  line-height: 1.1;
+  white-space: pre;
+  margin: 0;
+  overflow: hidden;
+}
+
+.gallery-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+}
+.gallery-card-meta {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.gallery-card-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.gallery-like-btn,
+.gallery-copy-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.15s;
+}
+.gallery-like-btn:hover {
+  background: var(--border);
+}
+.gallery-like-btn.liked {
+  border-color: #e74c3c;
+  background: rgba(231, 76, 60, 0.1);
+}
+.gallery-copy-btn:hover {
+  background: var(--border);
+}
+
+.gallery-card-expanded {
+  padding: 1rem;
+  border-top: 1px solid var(--border);
+  max-height: 400px;
+  overflow: auto;
+}
+.gallery-card-full-ascii {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 6px;
+  line-height: 1.1;
+  white-space: pre;
+  margin: 0 0 0.5rem;
+}
+.gallery-copy-full-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.gallery-load-more {
+  display: block;
+  margin: 2rem auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 1.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.gallery-load-more:hover {
+  background: var(--border);
+}
+
+.gallery-loading {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 2rem;
+}
+.gallery-empty {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-muted);
+}
+.gallery-empty-hint {
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+.gallery-error {
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid #e74c3c;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  color: #e74c3c;
 }

@@ -231,13 +231,17 @@ grafana:
 # Base stack (no observability):
 docker compose up
 
-# With observability:
+# With observability (first, add to your .env):
+#   EXPOSE_METRICS=true
+#   GF_SECURITY_ADMIN_PASSWORD=changeme
 docker compose --profile observability up
 ```
 
 > **Why profiles?** The base stack (`docker compose up`) works without any `.env` setup. Prometheus and Grafana are opt-in — users explicitly choose to start the observability stack. This avoids breaking the base dev workflow for contributors who don't need metrics.
 
-> **Local access:** Grafana is mapped to port 3001 (avoids conflict with frontend's 3000). Open `http://localhost:3001`, login as `admin` with the password from your `.env` file (default: `changeme`).
+> **Why EXPOSE_METRICS in .env?** The `/metrics` endpoint is opt-in everywhere (local and production). Users must explicitly enable it in their `.env` when they want Prometheus scraping. This keeps the default secure and avoids accidentally exposing operational data.
+
+> **Local access:** Grafana is mapped to port 3001 (avoids conflict with frontend's 3000). Open `http://localhost:3001`, login as `admin` with your `GF_SECURITY_ADMIN_PASSWORD` from `.env`.
 
 ### Step 7: Deploy to Azure (Self-Hosted)
 

@@ -158,18 +158,18 @@ func (s *PostgresStore) ListPublic(ctx context.Context, sessionID string, limit,
 	// CTE paginates pastas first, then LEFT JOIN likes only for the page.
 	query := `
 		WITH page AS (
-			SELECT id, ascii_art, width, height, mode, is_public, created_at
+			SELECT id, ascii_art, width, height, mode, created_at
 			FROM pastas
 			WHERE is_public = TRUE
 			ORDER BY created_at DESC
 			LIMIT $1 OFFSET $2
 		)
-		SELECT page.id, page.ascii_art, page.width, page.height, page.mode, page.is_public, page.created_at,
+		SELECT page.id, page.ascii_art, page.width, page.height, page.mode, page.created_at,
 			COUNT(l.session_id) AS like_count,
-			BOOL_OR(l.session_id = $3) AS liked_by_me
+			COALESCE(BOOL_OR(l.session_id = $3), FALSE) AS liked_by_me
 		FROM page
 		LEFT JOIN likes l ON l.pasta_id = page.id
-		GROUP BY page.id, page.ascii_art, page.width, page.height, page.mode, page.is_public, page.created_at
+		GROUP BY page.id, page.ascii_art, page.width, page.height, page.mode, page.created_at
 		ORDER BY page.created_at DESC
 	`
 	rows, err := s.pool.Query(ctx, query, limit, offset, sessionID)
@@ -181,14 +181,11 @@ func (s *PostgresStore) ListPublic(ctx context.Context, sessionID string, limit,
 	var pastas []GalleryPasta
 	for rows.Next() {
 		var gp GalleryPasta
-		var likedByMe *bool
 		if err := rows.Scan(&gp.ID, &gp.ASCIIArt, &gp.Width, &gp.Height,
-			&gp.Mode, &gp.IsPublic, &gp.CreatedAt, &gp.LikeCount, &likedByMe); err != nil {
+			&gp.Mode, &gp.CreatedAt, &gp.LikeCount, &gp.LikedByMe); err != nil {
 			return nil, err
 		}
-		if likedByMe != nil {
-			gp.LikedByMe = *likedByMe
-		}
+		gp.IsPublic = true
 		pastas = append(pastas, gp)
 	}
 	return pastas, rows.Err()

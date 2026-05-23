@@ -117,7 +117,7 @@ export function Gallery({ onBack }: GalleryProps) {
               className="gallery-card-preview"
               onClick={() => setExpandedId(expandedId === pasta.id ? null : pasta.id)}
               aria-expanded={expandedId === pasta.id}
-              aria-label={`Toggle preview for pasta ${pasta.id}`}
+              aria-label={expandedId === pasta.id ? 'Collapse preview' : 'Expand preview'}
             >
               <pre className="gallery-card-ascii">
                 {pasta.ascii_art.slice(0, 500)}{pasta.ascii_art.length > 500 ? '...' : ''}

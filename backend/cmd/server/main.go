@@ -46,7 +46,7 @@ func main() {
 
 	h := handler.New(handler.WithStore(s))
 	r.Get("/api/health", h.Health)
-	r.Post("/api/convert", h.Convert)
+	r.With(appmiddleware.RateLimitConvert()).Post("/api/convert", h.Convert)
 	r.Get("/api/pastas", h.ListPastas)
 	r.Get("/api/pastas/{id}", h.GetPasta)
 	r.Delete("/api/pastas/{id}", h.DeletePasta)

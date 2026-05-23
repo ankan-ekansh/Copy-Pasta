@@ -227,7 +227,7 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 ---
 
 ## Phase 4c: Rate Limiting — "Don't Get Spammed"
-**Status**: Planned  
+**Status**: Complete  
 **Goal**: Protect CPU-intensive conversion endpoint from abuse without impeding legitimate users.
 
 ### Options Evaluated
@@ -256,11 +256,11 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 
 | Step | Task | Status |
 |------|------|--------|
-| 1 | Add `go-chi/httprate` dependency to `backend/go.mod` | ⬜ |
-| 2 | Create `backend/internal/middleware/ratelimit.go` — factory reading env vars | ⬜ |
-| 3 | Create `backend/internal/middleware/ratelimit_test.go` — under/over limit, per-IP isolation | ⬜ |
-| 4 | Wire in `backend/cmd/server/main.go` — stricter on convert, general on all API | ⬜ |
-| 5 | Update `.env.example` with new vars | ⬜ |
+| 1 | Add `go-chi/httprate` dependency to `backend/go.mod` | ✅ |
+| 2 | Create `backend/internal/middleware/ratelimit.go` — factory reading env vars | ✅ |
+| 3 | Create `backend/internal/middleware/ratelimit_test.go` — under/over limit, per-IP isolation | ✅ |
+| 4 | Wire in `backend/cmd/server/main.go` — stricter on convert, general on all API | ✅ |
+| 5 | Update `.env.example` with new vars | ✅ |
 | 6 | Update `docs/ARCHITECTURE.md` footguns table | ✅ |
 
 ### Risks & Mitigations

@@ -531,7 +531,7 @@
 
 .history-btn-active {
   background: rgba(46, 204, 113, 0.15);
-  border-color: #2ecc71;
+  border: 1px solid #2ecc71;
 }
 
 /* PastaView */

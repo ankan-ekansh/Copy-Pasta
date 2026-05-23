@@ -90,6 +90,7 @@ function App() {
             type="button"
             className={`nav-badge ${view === 'gallery' ? 'active' : ''}`}
             onClick={() => setView(view === 'gallery' ? 'app' : 'gallery')}
+            aria-pressed={view === 'gallery'}
           >
             🖼️ Gallery
           </button>

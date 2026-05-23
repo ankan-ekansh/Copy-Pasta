@@ -123,6 +123,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
                 className={`history-btn ${pasta.is_public ? 'history-btn-active' : ''}`}
                 onClick={() => handleTogglePublic(pasta.id, pasta.is_public)}
                 disabled={publishingIds.has(pasta.id)}
+                aria-pressed={pasta.is_public}
                 aria-label={pasta.is_public ? 'Unpublish from gallery' : 'Publish to gallery'}
                 title={pasta.is_public ? 'Published ✓' : 'Publish to gallery'}
               >

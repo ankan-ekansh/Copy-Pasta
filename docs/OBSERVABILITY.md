@@ -1,0 +1,295 @@
+# 📊 Phase 4: Observability — Detailed Plan
+
+## Current State
+
+| What | Current | Target |
+|------|---------|--------|
+| Logging | `log.Printf` (unstructured, no levels) | JSON structured logs with slog |
+| Access logs | `chimiddleware.Logger` (Apache-style) | Custom slog middleware with latency, status, request_id |
+| Health check | `{"status":"ok"}` (no dependency checks) | DB ping, version, uptime, dependency status |
+| Metrics | None | Prometheus counters + histograms |
+| Dashboards | None | Grafana with pre-built panels |
+| Request tracing | None | X-Request-ID propagation across logs |
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Azure Container Apps Environment (cae-copy-pasta)          │
+│                                                             │
+│  ┌──────────────┐  scrape /metrics       ┌──────────────┐   │
+│  │  copy-pasta  │◄──────────────────────│  Prometheus  │   │
+│  │  (Go app)    │                       │  :9090       │   │
+│  │  :8080       │                       │  (internal)  │   │
+│  └──────────────┘                       └──────┬───────┘   │
+│                                                 │           │
+│                                          ┌──────▼───────┐   │
+│                                          │   Grafana    │   │
+│                                          │   :3000      │   │
+│                                          │  (external)  │   │
+│                                          └──────────────┘   │
+│                                                ▲            │
+└────────────────────────────────────────────────┼────────────┘
+                                                 │
+                                           You (browser)
+```
+
+### Why Not Sidecars?
+
+Azure Container Apps supports sidecar containers (multiple containers in one app). This is **not** suitable for Prometheus/Grafana because:
+
+1. **Scaling conflict** — Sidecars share the main app's scaling rules. If `copy-pasta` scales to zero, a Prometheus sidecar stops scraping.
+2. **Data fragmentation** — If the app scales to 3 replicas, you'd get 3 independent Prometheus instances with partial data.
+3. **Resource contention** — Prometheus/Grafana would eat into the app's 0.25 CPU / 0.5Gi allocation.
+
+Separate Container Apps give each service independent scaling, its own resources, and free internal DNS within the same environment.
+
+---
+
+## Production Hosting: Self-Hosted vs Azure Managed
+
+| | Self-Hosted (Container Apps) | Azure Managed |
+|---|---|---|
+| **What** | Prometheus + Grafana as separate Container Apps in same environment | Azure Monitor Managed Prometheus + Azure Managed Grafana |
+| **Cost** | ~$5-7/mo (0.25 CPU + 0.5Gi each, Prometheus always-on) | ~$10-12/mo (1 user at $9 + low ingestion at ~$1-3) |
+| **For our usage** | ~$5-7/mo fixed | ~$10-12/mo |
+| **Setup** | We deploy + configure ourselves | Azure provisions, patches, scales |
+| **Learning value** | 🟢 High — understand scraping, PromQL, dashboards from scratch | 🟡 Medium — abstracted away |
+| **Maintenance** | We handle upgrades, storage, config | Azure handles everything |
+| **Data retention** | Limited by volume size (configurable) | 18 months included |
+| **Custom dashboards** | Full control | Full control |
+| **Persistence** | Azure Files volume mount | Managed (built-in) |
+| **Scaling** | Manual (1 replica is fine for us) | Auto-scaled by Azure |
+| **Network** | Same environment = internal communication, fast | Needs endpoint configuration |
+| **Downside** | If Prometheus dies, you lose metrics until restart | Vendor lock-in, less educational |
+
+### Decision: **Self-hosted** ✅
+
+Reasons:
+1. Primary goal is **learning** — we want to understand how the observability stack works end-to-end
+2. Cost is comparable (~$5-7 vs ~$10-12/mo)
+3. Everything stays in our Container Apps environment — simple networking
+4. Can migrate to managed later if maintenance becomes a burden
+5. Dashboard JSON is portable (works with both self-hosted and managed Grafana)
+
+---
+
+## Implementation Steps
+
+### Step 1: Structured Logging with slog
+
+Replace `log.Printf` with Go stdlib `log/slog` (available since Go 1.21, we're on 1.25).
+
+**New files:**
+- `backend/internal/logging/logging.go` — logger initialization (JSON in prod, colored text in dev)
+
+**Modified files:**
+- `backend/cmd/server/main.go` — init slog, replace all `log.Printf`
+- `backend/internal/handler/handler.go` — replace `log.Printf` with `slog.Error`/`slog.Info`
+
+**Design:**
+- `LOG_FORMAT=json` (default in prod) or `LOG_FORMAT=text` (for local dev)
+- `LOG_LEVEL=info` (default) | `debug` | `warn` | `error`
+- Logger pulled from request context in handlers
+
+### Step 2: Request ID Middleware
+
+**New files:**
+- `backend/internal/middleware/requestid.go` — generates UUID, sets `X-Request-ID` header, stores in context
+
+**Behavior:**
+- If incoming request has `X-Request-ID`, reuse it (for tracing across services)
+- Otherwise generate a new one
+- All log entries for that request include `request_id` field
+
+### Step 3: Custom Access Log Middleware
+
+**New files:**
+- `backend/internal/middleware/requestlog.go` — replaces `chimiddleware.Logger`
+
+**Modified files:**
+- `backend/internal/middleware/middleware.go` — swap `chimiddleware.Logger` for custom
+
+**Log output (JSON):**
+```json
+{
+  "level": "INFO",
+  "msg": "request completed",
+  "request_id": "abc-123",
+  "method": "POST",
+  "path": "/api/convert",
+  "status": 200,
+  "latency_ms": 142,
+  "bytes": 8423,
+  "remote_addr": "10.0.0.1"
+}
+```
+
+### Step 4: Rich Health Endpoint
+
+**New files:**
+- `backend/internal/handler/health.go` — extracted from handler.go
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "version": "abc1234",
+  "uptime_seconds": 8100,
+  "checks": {
+    "database": { "status": "up", "latency_ms": 3 }
+  }
+}
+```
+
+**Implementation:**
+- DB ping with 2s timeout
+- Version injected via `go build -ldflags "-X main.version=$(git rev-parse --short HEAD)"`
+- Uptime tracked from `time.Now()` at startup
+- Returns HTTP 503 if any critical check fails (useful for Container Apps health probes)
+
+### Step 5: Prometheus Metrics
+
+**New dependency:** `github.com/prometheus/client_golang`
+
+**New files:**
+- `backend/internal/metrics/metrics.go` — define and register all metrics
+- `backend/internal/middleware/metrics.go` — HTTP metrics middleware
+
+**Metrics exposed at `GET /metrics`:**
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `http_requests_total` | Counter | method, path, status | Total HTTP requests |
+| `http_request_duration_seconds` | Histogram | method, path | Request latency |
+| `http_response_size_bytes` | Histogram | method, path | Response size |
+| `conversions_total` | Counter | mode (ascii/braille) | Conversion count |
+| `conversion_duration_seconds` | Histogram | mode | Conversion processing time |
+| `db_operations_total` | Counter | operation, status | DB query count |
+| `db_operation_duration_seconds` | Histogram | operation | DB query latency |
+
+**Modified files:**
+- `backend/cmd/server/main.go` — mount `/metrics` endpoint
+- `backend/internal/handler/handler.go` — instrument `Convert` endpoint
+- `backend/internal/store/postgres.go` — instrument DB operations
+
+### Step 6: Local Observability Stack (Docker Compose)
+
+**New files:**
+- `infra/prometheus/prometheus.yml` — scrape config
+- `infra/grafana/provisioning/datasources/prometheus.yml` — auto-provision datasource
+- `infra/grafana/provisioning/dashboards/dashboard.yml` — auto-load dashboards
+- `infra/grafana/dashboards/copy-pasta.json` — pre-built dashboard
+
+**Modified files:**
+- `docker-compose.yml` — add `prometheus` + `grafana` services
+
+**Docker Compose additions:**
+```yaml
+prometheus:
+  image: prom/prometheus:latest
+  volumes:
+    - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+  ports:
+    - "9090:9090"
+
+grafana:
+  image: grafana/grafana:latest
+  volumes:
+    - ./infra/grafana/provisioning:/etc/grafana/provisioning
+    - ./infra/grafana/dashboards:/var/lib/grafana/dashboards
+  ports:
+    - "3001:3000"
+  environment:
+    - GF_SECURITY_ADMIN_PASSWORD=copypasta
+```
+
+### Step 7: Deploy to Azure (Self-Hosted)
+
+**Modified files:**
+- `infra/setup-azure.sh` — add Steps 7-8 for Prometheus + Grafana Container Apps
+
+**Prometheus Container App:**
+- Image: `prom/prometheus:latest`
+- Ingress: **internal only** (not exposed to internet)
+- Volume: Azure Files for data persistence
+- Config: baked into a custom image (Dockerfile in `infra/prometheus/`)
+- Min replicas: 1 (must always be running to scrape)
+- CPU: 0.25, Memory: 0.5Gi
+
+**Grafana Container App:**
+- Image: custom (Dockerfile in `infra/grafana/`) with provisioning baked in
+- Ingress: **external** (browser access, protected by admin password)
+- Admin password: via `GRAFANA_ADMIN_PASSWORD` env var (same pattern as PG)
+- Datasource: points to Prometheus internal URL (`http://prometheus:9090`)
+- Min replicas: 0, Max: 1 (scale to zero when idle)
+- CPU: 0.25, Memory: 0.5Gi
+
+**Prometheus scrape config:**
+```yaml
+scrape_configs:
+  - job_name: 'copy-pasta'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['copy-pasta:8080']  # internal DNS in same Container Apps env
+```
+
+### Step 8: Pre-built Grafana Dashboard
+
+**Panels:**
+1. Request rate (req/s) by endpoint
+2. Latency percentiles (p50, p95, p99) by endpoint
+3. Error rate (4xx, 5xx)
+4. Conversion count by mode (ascii vs braille)
+5. Conversion latency histogram
+6. DB operation latency
+7. Health check status
+
+---
+
+## Implementation Order
+
+```
+Step 1 (slog) → Step 2 (request ID) → Step 3 (access log) → Step 4 (health)
+    → Step 5 (metrics) → Step 6 (local stack) → Step 7 (Azure deploy) → Step 8 (dashboard)
+```
+
+**PR strategy:**
+- PR 1: Steps 1-4 (logging + health) — no new deps
+- PR 2: Steps 5-6 (metrics + local Prometheus/Grafana)
+- PR 3: Steps 7-8 (Azure deployment + dashboard)
+
+---
+
+## Dependencies
+
+| Dependency | Purpose | Scope |
+|------------|---------|-------|
+| `log/slog` | Structured logging | stdlib (no new dep) |
+| `github.com/prometheus/client_golang` | Metrics exposition | New Go dependency |
+| `prom/prometheus` Docker image | Metrics collection | Dev + prod container |
+| `grafana/grafana` Docker image | Dashboards | Dev + prod container |
+
+---
+
+## Environment Variables (New)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_FORMAT` | `json` | `json` or `text` |
+| `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+| `APP_VERSION` | `dev` | Set via `-ldflags` at build time |
+| `GRAFANA_ADMIN_PASSWORD` | (required for Azure) | Grafana admin login |
+
+---
+
+## Cost Summary
+
+| Component | Local | Azure (Self-Hosted) |
+|-----------|-------|---------------------|
+| Prometheus | Free (docker) | ~$3-5/mo (always-on, 0.25 CPU) |
+| Grafana | Free (docker) | ~$1-2/mo (scales to zero) |
+| App metrics code | Free | Free |
+| **Total added** | **$0** | **~$5-7/mo** |

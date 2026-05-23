@@ -73,7 +73,8 @@ Copy-Pasta is a Go (backend) + React (frontend) web app that converts meme image
 ## Safety Rules
 
 - **Never run infrastructure scripts (`infra/setup-azure.sh`) or mutating `az` CLI commands without explicit user permission.** Only read-only az commands (e.g., `az account show`, `az containerapp show`) are allowed autonomously.
-- **Never run `docker compose up`, `docker build`, or any command that creates/modifies cloud resources** without asking first.
+- **Never run commands that create or modify cloud resources** (e.g., `az containerapp create`, `az storage account create`, `docker push` to ACR) without asking first.
+- **Local commands** (`docker build`, `docker compose up`, `make dev`, etc.) are fine to run autonomously for development and testing.
 - When in doubt, ask before executing — especially anything involving cost, deployment, or state changes.
 
 ---

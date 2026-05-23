@@ -50,7 +50,12 @@ func main() {
 	r.Get("/api/pastas/{id}", h.GetPasta)
 	r.Delete("/api/pastas/{id}", h.DeletePasta)
 	r.Patch("/api/pastas/{id}", h.SetPublic)
-	r.Handle("/metrics", promhttp.Handler())
+
+	// Expose /metrics for Prometheus scraping (enabled by default; set METRICS_ENABLED=false to disable)
+	if os.Getenv("METRICS_ENABLED") != "false" {
+		r.Handle("/metrics", promhttp.Handler())
+		slog.Info("metrics endpoint enabled", "path", "/metrics")
+	}
 
 	// Serve static frontend files if the directory exists (production mode)
 	staticDir := os.Getenv("STATIC_DIR")

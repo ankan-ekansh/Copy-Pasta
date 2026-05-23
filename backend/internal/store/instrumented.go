@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/metrics"
@@ -67,7 +68,7 @@ func (s *InstrumentedStore) Ping(ctx context.Context) error {
 	if p, ok := s.inner.(pinger); ok {
 		return p.Ping(ctx)
 	}
-	return nil
+	return errors.New("store does not support ping")
 }
 
 func (s *InstrumentedStore) record(operation string, start time.Time, err error) {

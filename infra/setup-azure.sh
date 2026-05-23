@@ -65,7 +65,7 @@ done
 echo ""
 
 # --- Step 1: Resource Group ---
-if az group show --name "$RESOURCE_GROUP" &>/dev/null; then
+if az group show --name "$RESOURCE_GROUP" >/dev/null; then
   echo "📦 Resource group '$RESOURCE_GROUP' already exists — skipping."
 else
   echo "📦 Creating resource group..."
@@ -76,7 +76,7 @@ else
 fi
 
 # --- Step 2: Azure Container Registry ---
-if az acr show --name "$ACR_NAME" &>/dev/null; then
+if az acr show --name "$ACR_NAME" >/dev/null; then
   echo "🐳 Container registry '$ACR_NAME' already exists — skipping."
 else
   echo "🐳 Creating container registry..."
@@ -96,7 +96,7 @@ ACR_PASSWORD=$(az acr credential show --name "$ACR_NAME" --query "passwords[0].v
 echo "   Registry: $ACR_LOGIN_SERVER"
 
 # --- Step 3: Container Apps Environment ---
-if az containerapp env show --name "$CONTAINER_APP_ENV" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+if az containerapp env show --name "$CONTAINER_APP_ENV" --resource-group "$RESOURCE_GROUP" >/dev/null; then
   echo "🌐 Container Apps environment '$CONTAINER_APP_ENV' already exists — skipping."
 else
   echo "🌐 Creating Container Apps environment..."
@@ -108,7 +108,7 @@ else
 fi
 
 # --- Step 4: Container App (initial deployment with placeholder) ---
-if az containerapp show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+if az containerapp show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" >/dev/null; then
   echo "🚀 Container App '$CONTAINER_APP_NAME' already exists — skipping."
 else
   echo "🚀 Creating Container App..."
@@ -136,7 +136,7 @@ APP_URL=$(az containerapp show \
   --query "properties.configuration.ingress.fqdn" -o tsv)
 
 # --- Step 5: PostgreSQL Flexible Server ---
-if az postgres flexible-server show --name "$PG_SERVER_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+if az postgres flexible-server show --name "$PG_SERVER_NAME" --resource-group "$RESOURCE_GROUP" >/dev/null; then
   echo "🐘 PostgreSQL server '$PG_SERVER_NAME' already exists — skipping."
 else
   # Require password from environment
@@ -312,7 +312,7 @@ az containerapp update \
 # Create Azure Files share for Prometheus data persistence
 PROM_SHARE="prometheus-data"
 echo "  Setting up persistent storage for Prometheus..."
-if ! az storage account show --name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+if ! az storage account show --name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" >/dev/null; then
   az storage account create \
     --name "$STORAGE_ACCOUNT" \
     --resource-group "$RESOURCE_GROUP" \
@@ -323,7 +323,7 @@ fi
 STORAGE_KEY=$(az storage account keys list --account-name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" --query "[0].value" -o tsv)
 
 # Create file share (idempotent — succeeds if already exists)
-if ! az storage share show --name "$PROM_SHARE" --account-name "$STORAGE_ACCOUNT" --account-key "$STORAGE_KEY" &>/dev/null; then
+if ! az storage share show --name "$PROM_SHARE" --account-name "$STORAGE_ACCOUNT" --account-key "$STORAGE_KEY" >/dev/null; then
   az storage share create --name "$PROM_SHARE" --account-name "$STORAGE_ACCOUNT" --account-key "$STORAGE_KEY" --output none
 fi
 
@@ -354,7 +354,7 @@ docker build -t "$GRAFANA_IMAGE" \
 docker push "$GRAFANA_IMAGE"
 
 # Deploy Prometheus (internal only, with persistent storage)
-if az containerapp show --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+if az containerapp show --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GROUP" >/dev/null; then
   echo "  📈 Prometheus app '$PROMETHEUS_APP' already exists — updating image."
   az containerapp secret set --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GROUP" \
     --secrets "metrics-token=$METRICS_TOKEN" --output none
@@ -428,7 +428,7 @@ if [[ -z "$PROMETHEUS_FQDN" ]]; then
 fi
 PROMETHEUS_URL="https://$PROMETHEUS_FQDN"
 
-if az containerapp show --name "$GRAFANA_APP" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+if az containerapp show --name "$GRAFANA_APP" --resource-group "$RESOURCE_GROUP" >/dev/null; then
   echo "  📊 Grafana app '$GRAFANA_APP' already exists — updating image."
   az containerapp update \
     --name "$GRAFANA_APP" \

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/metrics"
 	dto "github.com/prometheus/client_model/go"
@@ -252,6 +251,3 @@ func TestNewInstrumented_NilReturnsNil(t *testing.T) {
 		t.Error("expected nil for nil input")
 	}
 }
-
-// Suppress unused import warning for time package.
-var _ = time.Now

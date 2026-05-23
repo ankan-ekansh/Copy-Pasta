@@ -13,6 +13,12 @@ import (
 // Metrics records HTTP request metrics (count, duration, response size) for Prometheus.
 func Metrics(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip instrumentation for the metrics endpoint itself to avoid inflating counts.
+		if r.URL.Path == "/metrics" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		start := time.Now()
 		ww := chimiddleware.NewWrapResponseWriter(w, r.ProtoMajor)
 

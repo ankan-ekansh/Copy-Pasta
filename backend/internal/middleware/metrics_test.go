@@ -70,3 +70,34 @@ func TestMetrics_UnmatchedRoute(t *testing.T) {
 		t.Errorf("expected counter value 1 for unmatched, got %f", m.GetCounter().GetValue())
 	}
 }
+
+func TestMetrics_SkipsMetricsEndpoint(t *testing.T) {
+	metrics.HTTPRequestsTotal.Reset()
+
+	r := chi.NewRouter()
+	r.Use(Metrics)
+	r.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest("GET", "/metrics", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+
+	// No metrics should be recorded for /metrics itself
+	counter, err := metrics.HTTPRequestsTotal.GetMetricWithLabelValues("GET", "/metrics", "200")
+	if err != nil {
+		t.Fatalf("failed to get metric: %v", err)
+	}
+	m := &dto.Metric{}
+	if err := counter.Write(m); err != nil {
+		t.Fatalf("failed to write metric: %v", err)
+	}
+	if m.GetCounter().GetValue() != 0 {
+		t.Errorf("expected 0 for /metrics endpoint, got %f", m.GetCounter().GetValue())
+	}
+}

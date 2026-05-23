@@ -224,10 +224,27 @@ grafana:
 **Grafana Container App:**
 - Image: custom (Dockerfile in `infra/grafana/`) with provisioning baked in
 - Ingress: **external** (browser access, protected by admin password)
-- Admin password: via `GF_SECURITY_ADMIN_PASSWORD` env var (Grafana's native variable)
-- Datasource: points to Prometheus internal URL (`http://prometheus:9090`)
 - Min replicas: 0, Max: 1 (scale to zero when idle)
 - CPU: 0.25, Memory: 0.5Gi
+- Datasource: points to Prometheus internal URL (`http://prometheus:9090`)
+
+**Grafana secret setup (in `infra/setup-azure.sh`):**
+```bash
+# Generate strong password
+GRAFANA_PASSWORD=$(openssl rand -hex 20)
+
+# Store as Container Apps secret
+az containerapp secret set \
+  --name grafana \
+  --resource-group "$RESOURCE_GROUP" \
+  --secrets gf-security-admin-password="$GRAFANA_PASSWORD"
+
+# Map secret to Grafana's native env var
+az containerapp update \
+  --name grafana \
+  --resource-group "$RESOURCE_GROUP" \
+  --set-env-vars "GF_SECURITY_ADMIN_PASSWORD=secretref:gf-security-admin-password"
+```
 
 **Prometheus scrape config:**
 ```yaml
@@ -296,7 +313,7 @@ This is intentionally deferred: for a single-service app, Prometheus metrics + r
 | `LOG_FORMAT` | `json` | `json` or `text` |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `APP_VERSION` | `dev` | Fallback if not injected via `-ldflags "-X main.version=..."` at build time |
-| `GF_SECURITY_ADMIN_PASSWORD` | `admin` (local) | Grafana admin login (Grafana's native env var) |
+| `GF_SECURITY_ADMIN_PASSWORD` | `admin` (local `.env`) | Grafana admin login — in Azure, stored as Container Apps secret via `secretref:` |
 
 ---
 
@@ -308,3 +325,26 @@ This is intentionally deferred: for a single-service app, Prometheus metrics + r
 | Grafana | Free (docker) | ~$1-2/mo (scales to zero) |
 | App metrics code | Free | Free |
 | **Total added** | **$0** | **~$5-7/mo** |
+
+---
+
+## Security Considerations
+
+### Credential Management
+
+| Environment | Where password lives | How it's set |
+|-------------|---------------------|--------------|
+| **Local dev** | `.env` file (git-ignored) | `GF_SECURITY_ADMIN_PASSWORD=yourpassword` — docker-compose reads `.env` automatically |
+| **Azure prod** | Container Apps secret (encrypted at rest) | `az containerapp secret set` → mapped via `secretref:` to env var |
+
+### Current vs Production-Grade
+
+| Concern | Our approach (sufficient for learning) | Production-grade alternative |
+|---------|---------------------------------------|------------------------------|
+| Password storage | Container Apps secrets | Azure Key Vault with managed identity |
+| Access control | Password-only login | Azure AD OAuth (Grafana supports `GF_AUTH_AZUREAD_*` natively) |
+| Network exposure | External ingress + password | Internal-only ingress + VPN / Azure Front Door with IP allowlist |
+| Password rotation | Manual (re-run script) | Key Vault rotation policy |
+| Prometheus access | Internal ingress (not exposed) | ✅ Already correct |
+
+> **Why this is fine for now:** Grafana only exposes operational metrics (request rates, latency) — no user PII. The attack surface is limited to someone guessing a 40-char hex password on an obscure URL. If we ever expose sensitive data, add Azure AD OAuth as the first upgrade.

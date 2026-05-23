@@ -155,11 +155,12 @@ func (s *PostgresStore) ListPublic(ctx context.Context, sessionID string, limit,
 
 	query := `
 		SELECT p.id, p.session_id, p.ascii_art, p.width, p.height, p.mode, p.is_public, p.created_at,
-			COALESCE(lc.cnt, 0) AS like_count,
-			EXISTS(SELECT 1 FROM likes WHERE pasta_id = p.id AND session_id = $3) AS liked_by_me
+			COUNT(l.session_id) AS like_count,
+			BOOL_OR(l.session_id = $3) AS liked_by_me
 		FROM pastas p
-		LEFT JOIN (SELECT pasta_id, COUNT(*) AS cnt FROM likes GROUP BY pasta_id) lc ON lc.pasta_id = p.id
+		LEFT JOIN likes l ON l.pasta_id = p.id
 		WHERE p.is_public = TRUE
+		GROUP BY p.id
 		ORDER BY p.created_at DESC
 		LIMIT $1 OFFSET $2
 	`
@@ -172,9 +173,13 @@ func (s *PostgresStore) ListPublic(ctx context.Context, sessionID string, limit,
 	var pastas []GalleryPasta
 	for rows.Next() {
 		var gp GalleryPasta
+		var likedByMe *bool
 		if err := rows.Scan(&gp.ID, &gp.SessionID, &gp.ASCIIArt, &gp.Width, &gp.Height,
-			&gp.Mode, &gp.IsPublic, &gp.CreatedAt, &gp.LikeCount, &gp.LikedByMe); err != nil {
+			&gp.Mode, &gp.IsPublic, &gp.CreatedAt, &gp.LikeCount, &likedByMe); err != nil {
 			return nil, err
+		}
+		if likedByMe != nil {
+			gp.LikedByMe = *likedByMe
 		}
 		pastas = append(pastas, gp)
 	}

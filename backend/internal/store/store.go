@@ -48,7 +48,7 @@ type Store interface {
 	// Returns ErrNotFound if the pasta doesn't exist or isn't owned by the session.
 	SetPublicByOwner(ctx context.Context, id, sessionID string, isPublic bool) error
 
-	// LikePasta adds a like from the session. Returns ErrAlreadyLiked if duplicate.
+	// LikePasta adds a like from the session. Idempotent — no-op if already liked.
 	LikePasta(ctx context.Context, pastaID, sessionID string) error
 
 	// UnlikePasta removes a like from the session. Returns ErrNotFound if not liked.

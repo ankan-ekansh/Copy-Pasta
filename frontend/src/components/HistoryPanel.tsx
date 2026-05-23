@@ -6,7 +6,7 @@ interface HistoryPanelProps {
   refreshTrigger?: number;
 }
 
-type State = { pastas: Pasta[]; loading: boolean; error: string; deleteError: string };
+type State = { pastas: Pasta[]; loading: boolean; error: string; deleteError: string; publishError: string };
 type Action =
   | { type: 'fetch' }
   | { type: 'loaded'; pastas: Pasta[] }
@@ -14,23 +14,25 @@ type Action =
   | { type: 'remove'; id: string }
   | { type: 'toggle-public'; id: string; isPublic: boolean }
   | { type: 'delete-error'; message: string }
+  | { type: 'publish-error'; message: string }
   | { type: 'clear-delete-error' };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'fetch': return { ...state, loading: true, error: '', deleteError: '' };
+    case 'fetch': return { ...state, loading: true, error: '', deleteError: '', publishError: '' };
     case 'loaded': return { ...state, pastas: action.pastas, loading: false, error: '' };
     case 'error': return { ...state, loading: false, error: action.message };
     case 'remove': return { ...state, pastas: state.pastas.filter((p) => p.id !== action.id) };
     case 'toggle-public': return { ...state, pastas: state.pastas.map((p) => p.id === action.id ? { ...p, is_public: action.isPublic } : p) };
     case 'delete-error': return { ...state, deleteError: action.message };
-    case 'clear-delete-error': return { ...state, deleteError: '' };
+    case 'publish-error': return { ...state, publishError: action.message };
+    case 'clear-delete-error': return { ...state, deleteError: '', publishError: '' };
     default: return state;
   }
 }
 
 export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
-  const [state, dispatch] = useReducer(reducer, { pastas: [], loading: true, error: '', deleteError: '' });
+  const [state, dispatch] = useReducer(reducer, { pastas: [], loading: true, error: '', deleteError: '', publishError: '' });
 
   useEffect(() => {
     let cancelled = false;
@@ -61,7 +63,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
       await setPublic(id, !currentlyPublic);
       dispatch({ type: 'toggle-public', id, isPublic: !currentlyPublic });
     } catch {
-      dispatch({ type: 'delete-error', message: 'Failed to update visibility' });
+      dispatch({ type: 'publish-error', message: 'Failed to update visibility' });
     }
   };
 
@@ -96,6 +98,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
     <section className="history-card">
       <p className="eyebrow">📜 Recent pastas</p>
       {state.deleteError && <p className="error-banner">⚠️ {state.deleteError}</p>}
+      {state.publishError && <p className="error-banner">⚠️ {state.publishError}</p>}
       <ul className="history-list">
         {state.pastas.map((pasta) => (
           <li key={pasta.id} className="history-item">

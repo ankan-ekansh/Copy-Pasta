@@ -612,6 +612,11 @@
   padding: 1rem;
   max-height: 200px;
   overflow: hidden;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: none;
 }
 .gallery-card-ascii {
   font-family: 'JetBrains Mono', 'Fira Code', monospace;

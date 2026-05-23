@@ -72,7 +72,7 @@ export function Gallery({ onBack }: GalleryProps) {
   };
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+    navigator.clipboard?.writeText(text)?.catch(() => {});
   };
 
   return (
@@ -95,14 +95,17 @@ export function Gallery({ onBack }: GalleryProps) {
       <div className="gallery-grid">
         {pastas.map(pasta => (
           <div key={pasta.id} className="gallery-card">
-            <div
+            <button
+              type="button"
               className="gallery-card-preview"
               onClick={() => setExpandedId(expandedId === pasta.id ? null : pasta.id)}
+              aria-expanded={expandedId === pasta.id}
+              aria-label={`Toggle preview for pasta ${pasta.id}`}
             >
               <pre className="gallery-card-ascii">
                 {pasta.ascii_art.slice(0, 500)}{pasta.ascii_art.length > 500 ? '...' : ''}
               </pre>
-            </div>
+            </button>
 
             <div className="gallery-card-footer">
               <div className="gallery-card-meta">

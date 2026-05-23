@@ -14,6 +14,7 @@ export function Gallery({ onBack }: GalleryProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const loadingRef = useRef(false);
 
   const loadGallery = async (pageOffset: number): Promise<boolean> => {
     setLoading(true);
@@ -79,9 +80,12 @@ export function Gallery({ onBack }: GalleryProps) {
   };
 
   const handleLoadMore = async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     const newOffset = offset + PAGE_SIZE;
     const success = await loadGallery(newOffset);
     if (success) setOffset(newOffset);
+    loadingRef.current = false;
   };
 
   const copyToClipboard = (text: string) => {

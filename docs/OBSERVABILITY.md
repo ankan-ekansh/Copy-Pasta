@@ -241,7 +241,10 @@ docker compose --profile observability up
 
 > **Why EXPOSE_METRICS in .env?** The `/metrics` endpoint is opt-in everywhere (local and production). Users must explicitly enable it in their `.env` when they want Prometheus scraping. This keeps the default secure and avoids accidentally exposing operational data.
 
-> **Local access:** Grafana is mapped to port 3001 (avoids conflict with frontend's 3000). Open `http://localhost:3001`, login as `admin` with your `GF_SECURITY_ADMIN_PASSWORD` from `.env`.
+> **Why a default password fallback (`:-changeme`) instead of requiring it (`{:?}`):**  
+> Docker Compose interpolates ALL service environment variables regardless of active profiles. Using `${VAR:?msg}` would cause `docker compose config` to fail for every user — even those only running the base stack. This is a Docker Compose limitation. Mitigations: ports bound to `127.0.0.1` (not network-accessible), profile is opt-in, anonymous access disabled.
+
+> **Local access:** Grafana and Prometheus are bound to localhost only (`127.0.0.1:3001`, `127.0.0.1:9090`) — not accessible from the network. Open `http://localhost:3001`, login as `admin` with your `GF_SECURITY_ADMIN_PASSWORD` from `.env`.
 
 ### Step 7: Deploy to Azure (Self-Hosted)
 

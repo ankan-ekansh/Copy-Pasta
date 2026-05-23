@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -52,10 +53,10 @@ func main() {
 	r.Patch("/api/pastas/{id}", h.SetPublic)
 
 	// Expose /metrics endpoint for Prometheus scraping.
-	// Requires EXPOSE_METRICS=true to mount the endpoint (opt-in).
+	// Requires EXPOSE_METRICS=true (or any truthy value: 1, t, yes) to mount the endpoint.
 	// Note: internal instrumentation (middleware/store metrics) still runs regardless;
 	// this flag only controls whether the /metrics HTTP endpoint is reachable.
-	if os.Getenv("EXPOSE_METRICS") == "true" {
+	if exposeMetrics, err := strconv.ParseBool(os.Getenv("EXPOSE_METRICS")); err == nil && exposeMetrics {
 		r.Handle("/metrics", promhttp.Handler())
 		slog.Info("metrics endpoint enabled", "path", "/metrics")
 	}

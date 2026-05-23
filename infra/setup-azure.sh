@@ -29,6 +29,8 @@ IMAGE_TAG="latest"
 PG_SERVER_NAME="pg-sv-copy-pasta"
 PG_ADMIN_USER="copypasta"
 PG_DB_NAME="copypasta"
+STORAGE_ACCOUNT="${STORAGE_ACCOUNT:-copypasta${RESOURCE_GROUP//[^a-z0-9]/}}"  # must be globally unique
+STORAGE_ACCOUNT="${STORAGE_ACCOUNT:0:24}"  # max 24 chars
 
 echo "🍝 Copy-Pasta Azure Infrastructure Setup"
 echo "========================================="
@@ -279,7 +281,6 @@ az containerapp update \
   --output none
 
 # Create Azure Files share for Prometheus data persistence
-STORAGE_ACCOUNT="copypastastorage"
 PROM_SHARE="prometheus-data"
 echo "  Setting up persistent storage for Prometheus..."
 if ! az storage account show --name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
@@ -291,9 +292,13 @@ if ! az storage account show --name "$STORAGE_ACCOUNT" --resource-group "$RESOUR
     --output none
 fi
 STORAGE_KEY=$(az storage account keys list --account-name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" --query "[0].value" -o tsv)
-az storage share create --name "$PROM_SHARE" --account-name "$STORAGE_ACCOUNT" --account-key "$STORAGE_KEY" --output none 2>/dev/null || true
 
-# Add storage to Container Apps environment
+# Create file share (idempotent — succeeds if already exists)
+if ! az storage share show --name "$PROM_SHARE" --account-name "$STORAGE_ACCOUNT" --account-key "$STORAGE_KEY" &>/dev/null; then
+  az storage share create --name "$PROM_SHARE" --account-name "$STORAGE_ACCOUNT" --account-key "$STORAGE_KEY" --output none
+fi
+
+# Register storage in Container Apps environment (idempotent — set is an upsert)
 az containerapp env storage set \
   --name "$CONTAINER_APP_ENV" \
   --resource-group "$RESOURCE_GROUP" \
@@ -302,7 +307,7 @@ az containerapp env storage set \
   --azure-file-account-key "$STORAGE_KEY" \
   --azure-file-share-name "$PROM_SHARE" \
   --access-mode ReadWrite \
-  --output none 2>/dev/null || true
+  --output none
 
 # Build and push Prometheus image
 echo "  Building Prometheus image..."
@@ -343,12 +348,14 @@ else
     --registry-username "$ACR_USERNAME" \
     --registry-password "$ACR_PASSWORD" \
     --output none
+fi
 
-  # Mount persistent volume for Prometheus TSDB
-  az containerapp update \
-    --name "$PROMETHEUS_APP" \
-    --resource-group "$RESOURCE_GROUP" \
-    --yaml /dev/stdin <<EOF
+# Ensure persistent volume is attached (idempotent — runs on both create and update)
+echo "  Attaching persistent storage to Prometheus..."
+az containerapp update \
+  --name "$PROMETHEUS_APP" \
+  --resource-group "$RESOURCE_GROUP" \
+  --yaml /dev/stdin <<EOF
 properties:
   template:
     volumes:
@@ -362,13 +369,23 @@ properties:
           - volumeName: promdata
             mountPath: /prometheus
 EOF
-fi
 
 # Deploy Grafana (external, password-protected)
-# Get Prometheus internal FQDN for Grafana datasource
+# Get Prometheus internal FQDN for Grafana datasource (with retry)
 # Internal ingress in Container Apps uses HTTPS on port 443
-PROMETHEUS_FQDN=$(az containerapp show --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GROUP" \
-  --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null)
+echo "  Waiting for Prometheus FQDN..."
+PROMETHEUS_FQDN=""
+for i in 1 2 3 4 5; do
+  PROMETHEUS_FQDN=$(az containerapp show --name "$PROMETHEUS_APP" --resource-group "$RESOURCE_GROUP" \
+    --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null)
+  if [[ -n "$PROMETHEUS_FQDN" ]]; then break; fi
+  sleep 5
+done
+if [[ -z "$PROMETHEUS_FQDN" ]]; then
+  echo "❌ ERROR: Could not retrieve Prometheus internal FQDN after 25s."
+  echo "   Check that '$PROMETHEUS_APP' has internal ingress enabled."
+  exit 1
+fi
 PROMETHEUS_URL="https://$PROMETHEUS_FQDN"
 
 if az containerapp show --name "$GRAFANA_APP" --resource-group "$RESOURCE_GROUP" &>/dev/null; then

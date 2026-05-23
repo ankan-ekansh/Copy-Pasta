@@ -39,7 +39,7 @@ Copy-Pasta converts meme images into ASCII/Braille art. The stack:
 | Compose profiles | Keep base stack minimal; observability is opt-in |
 | Braille conversion | Higher fidelity than traditional ASCII — each char encodes 2×4 pixel block |
 | CTE pagination for gallery | Separates row selection from aggregation; cleaner query, predictable performance |
-| Transactional unpublish | Atomic unpublish + clear likes prevents orphaned likes in public view |
+| Transactional unpublish | Atomic unpublish + clear likes ensures consistency — no window where likes exist on a non-public pasta |
 | SQL-enforced public gate | `INSERT...SELECT WHERE is_public=TRUE` — impossible to like a non-public pasta even with race conditions |
 | useRef for in-flight guards | Synchronous check prevents double-clicks without waiting for React re-render |
 

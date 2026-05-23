@@ -11,38 +11,38 @@ import (
 
 // mockStore implements Store for testing InstrumentedStore.
 type mockStore struct {
-	saveErr         error
-	getResult       *Pasta
-	getErr          error
-	listResult      []Pasta
-	listErr         error
-	deleteErr       error
-	setPublicErr    error
+	saveErr          error
+	getResult        *Pasta
+	getErr           error
+	listResult       []Pasta
+	listErr          error
+	deleteErr        error
+	setPublicErr     error
 	listPublicResult []GalleryPasta
-	listPublicErr   error
-	likeErr         error
-	unlikeErr       error
-	likeCount       int
-	likedByMe       bool
-	likeCountErr    error
-	isPublicErr     error
-	closed          bool
+	listPublicErr    error
+	likeErr          error
+	unlikeErr        error
+	likeCount        int
+	likedByMe        bool
+	likeCountErr     error
+	isPublicErr      error
+	closed           bool
 }
 
-func (m *mockStore) Save(_ context.Context, _ *Pasta) error              { return m.saveErr }
-func (m *mockStore) Get(_ context.Context, _ string) (*Pasta, error)     { return m.getResult, m.getErr }
+func (m *mockStore) Save(_ context.Context, _ *Pasta) error          { return m.saveErr }
+func (m *mockStore) Get(_ context.Context, _ string) (*Pasta, error) { return m.getResult, m.getErr }
 func (m *mockStore) ListBySession(_ context.Context, _ string, _, _ int) ([]Pasta, error) {
 	return m.listResult, m.listErr
 }
 func (m *mockStore) ListPublic(_ context.Context, _ string, _, _ int) ([]GalleryPasta, error) {
 	return m.listPublicResult, m.listPublicErr
 }
-func (m *mockStore) DeleteByOwner(_ context.Context, _, _ string) error  { return m.deleteErr }
+func (m *mockStore) DeleteByOwner(_ context.Context, _, _ string) error { return m.deleteErr }
 func (m *mockStore) SetPublicByOwner(_ context.Context, _, _ string, _ bool) error {
 	return m.setPublicErr
 }
 func (m *mockStore) LikePasta(_ context.Context, _, _ string) error   { return m.likeErr }
-func (m *mockStore) UnlikePasta(_ context.Context, _, _ string) error  { return m.unlikeErr }
+func (m *mockStore) UnlikePasta(_ context.Context, _, _ string) error { return m.unlikeErr }
 func (m *mockStore) GetLikeCount(_ context.Context, _, _ string) (int, bool, error) {
 	return m.likeCount, m.likedByMe, m.likeCountErr
 }

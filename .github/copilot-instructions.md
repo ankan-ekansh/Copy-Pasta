@@ -55,6 +55,7 @@ Copy-Pasta is a Go (backend) + React (frontend) web app that converts meme image
 ## Architecture Rules
 
 - **Metrics labels:** Never use raw URL paths as Prometheus labels (unbounded cardinality). Use route patterns from `chi.RouteContext().RoutePattern()`.
+- **Metrics auth:** `/metrics` is protected by bearer token in production (`METRICS_TOKEN` env var). If set, requests without `Authorization: Bearer <token>` get 401. Unset = open (local dev).
 - **Middleware:** Always nil-guard `chi.RouteContext()` — can be nil outside the router.
 - **Rate limiting:** Scoped to `/api` routes only (via chi Route group). `/api/convert` has its own limiter; general API routes share a separate one.
 - **RealIP trust:** `chi/middleware.RealIP` and `WithKeyByRealIP()` are only active when `TRUSTED_PROXY=true`. Without it, `RemoteAddr` is used directly (safe for bare dev server).

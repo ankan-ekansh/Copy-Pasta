@@ -124,11 +124,18 @@ func spaFileServer(root fs.FS) http.HandlerFunc {
 }
 
 // requireBearerToken wraps a handler to require a valid Authorization: Bearer <token> header.
+// The scheme comparison is case-insensitive per RFC 7235.
 func requireBearerToken(token string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
-		provided := strings.TrimPrefix(auth, "Bearer ")
-		if !strings.HasPrefix(auth, "Bearer ") || subtle.ConstantTimeCompare([]byte(provided), []byte(token)) != 1 {
+		// RFC 7235: auth scheme is case-insensitive
+		if len(auth) < 7 || !strings.EqualFold(auth[:7], "bearer ") {
+			w.Header().Set("WWW-Authenticate", "Bearer")
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		provided := auth[7:]
+		if subtle.ConstantTimeCompare([]byte(provided), []byte(token)) != 1 {
 			w.Header().Set("WWW-Authenticate", "Bearer")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

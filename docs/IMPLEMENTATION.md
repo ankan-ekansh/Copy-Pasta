@@ -171,7 +171,7 @@ Global middleware chain (in order):
 - `LikePasta` uses `INSERT...SELECT WHERE is_public=TRUE` — enforces "only public pastas can be liked" at the SQL level
 - `SetPublicByOwner` wraps in a transaction: UPDATE pasta → DELETE likes (on unpublish). Atomic.
 - `IsPublicPasta` is a lightweight `SELECT EXISTS(...)` check — used by the unlike handler to avoid loading full art
-- Schema includes `likes` table: `(pasta_id, session_id)` with indexes on `(pasta_id)` and `(session_id)`
+- Schema includes `likes` table: `(pasta_id, session_id)` composite primary key + `idx_likes_session` index on `(session_id)`
 - Offset clamped to 0 if negative (defensive pagination)
 
 ---
@@ -203,14 +203,14 @@ Global middleware chain (in order):
 - `getPasta(id)` → `Promise<Pasta>` — fetch a single pasta by ID
 - `listPastas(limit?, offset?)` → `Promise<Pasta[]>` — list user's pastas (returns `[]` on 503)
 - `deletePasta(id)` → `Promise<void>` — delete a pasta by ID
-- `setPublic(id, isPublic)` → `Promise<Pasta>` — toggle publish status
+- `setPublic(id, isPublic)` → `Promise<void>` — toggle publish status
 - All use `credentials: 'include'` and `encodeURIComponent(id)` in paths
 
 ### API Client: `src/api/gallery.ts`
 - `listGallery(limit?, offset?)` → `Promise<GalleryPasta[]>` — paginated gallery listing
 - `likePasta(id)` → `Promise<{like_count, liked_by_me}>` — like a public pasta
 - `unlikePasta(id)` → `Promise<{like_count, liked_by_me}>` — unlike a pasta
-- `GalleryPasta` extends `Pasta` with `like_count` and `liked_by_me` fields
+- `GalleryPasta` is `Omit<Pasta, 'is_public'>` plus `like_count` and `liked_by_me` fields
 
 ### Vite Config
 - Proxies `/api` to `http://localhost:8080` in dev mode
@@ -379,6 +379,7 @@ Lists public pastas with like counts (paginated).
       "id": "abc123",
       "ascii_art": "...",
       "width": 80,
+      "height": 40,
       "mode": "braille",
       "created_at": "2025-01-01T00:00:00Z",
       "like_count": 5,

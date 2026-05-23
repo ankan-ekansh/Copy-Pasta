@@ -109,23 +109,26 @@ Simulate a reviewer reading your diff:
 ## Build & Run
 
 ```bash
-# Backend (local dev)
-cd backend && go run ./cmd/server
+# Local dev (backend + frontend concurrently)
+make dev
 
-# Frontend (local dev)
-cd frontend && npm run dev
+# Build both projects
+make build
 
-# Full stack via Docker Compose
-docker compose up
+# Run tests
+make test
+
+# Lint (go vet + eslint)
+make lint
+
+# Docker Compose (full stack)
+make docker-up
 
 # With observability (requires EXPOSE_METRICS=true in .env)
-docker compose --profile observability up
+docker compose --profile observability up --build
 
-# Run backend tests
-cd backend && go test ./...
-
-# Lint frontend
-cd frontend && npm run lint
+# Stop everything
+make docker-down
 ```
 
 ---

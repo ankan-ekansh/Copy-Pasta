@@ -13,7 +13,6 @@ import (
 func Register(r chi.Router) {
 	r.Use(CORS())
 	r.Use(chimiddleware.RealIP)
-	r.Use(RateLimitAPI())
 	r.Use(RequestID)
 	r.Use(Metrics)
 	r.Use(RequestLog)

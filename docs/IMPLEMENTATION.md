@@ -117,21 +117,25 @@ Each Braille character encodes a 2×4 dot matrix (8 binary pixels per character 
 - `PATCH /api/pastas/:id` — set is_public (atomic ownership check)
 
 ### Middleware: `backend/internal/middleware/middleware.go`
-Middleware chain (in order):
+Global middleware chain (in order):
 1. **CORS** — Origin validation, credentials support, wildcard+credentials guard
-2. **RealIP** (`chi/middleware.RealIP`) — Extracts client IP from `X-Forwarded-For`/`X-Real-IP` headers (required before rate limiting)
-3. **RateLimitAPI** — Global 100 req/min per IP (configurable via `RATE_LIMIT_API`)
-4. **RequestID** — Generates/propagates `X-Request-ID` header
-5. **Metrics** — Records HTTP request count and duration (Prometheus histograms)
-6. **RequestLog** — Structured access logging via `slog`
-7. **Recoverer** — Panic recovery
-8. **Session** — Sets `copy-pasta-session` UUID cookie (HttpOnly, SameSite=Lax, Secure via TLS/X-Forwarded-Proto)
+2. **RealIP** (`chi/middleware.RealIP`) — Extracts client IP from `X-Forwarded-For`/`X-Real-IP` headers
+3. **RequestID** — Generates/propagates `X-Request-ID` header
+4. **Metrics** — Records HTTP request count and duration (Prometheus histograms)
+5. **RequestLog** — Structured access logging via `slog`
+6. **Recoverer** — Panic recovery
+7. **Session** — Sets `copy-pasta-session` UUID cookie (HttpOnly, SameSite=Lax, Secure via TLS/X-Forwarded-Proto)
+
+**RateLimitAPI** is applied only to `/api` routes (via chi `Route` group), not to static assets or `/metrics`.
 
 ### Rate Limiting: `backend/internal/middleware/ratelimit.go`
-- **RateLimitConvert()** — Applied per-route on `POST /api/convert` via `r.With()`. 10 req/min per IP (configurable via `RATE_LIMIT_CONVERT`).
-- **RateLimitAPI()** — Applied globally in middleware chain. 100 req/min per IP (configurable via `RATE_LIMIT_API`).
+- **RateLimitConvert()** — Applied per-route on `POST /api/convert` via `api.With()`. 10 req/min per IP (configurable via `RATE_LIMIT_CONVERT`).
+- **RateLimitAPI()** — Applied to the `/api` route group only. 100 req/min per IP (configurable via `RATE_LIMIT_API`).
 - Uses `go-chi/httprate` with `WithKeyByRealIP()` for proper IP extraction behind proxies.
-- Returns 429 with JSON `{"error": "rate limit exceeded, try again later"}` and `Retry-After: 60` header.
+- `Retry-After` header is derived from `rateLimitWindow` (currently 60s).
+- Returns 429 with JSON `{"error": "rate limit exceeded, try again later"}`.
+
+**Trust assumption:** `chi/middleware.RealIP` trusts `X-Real-IP` and `X-Forwarded-For` headers. This is safe only when the app runs behind a trusted reverse proxy (nginx, Azure Front Door, Container Apps ingress) that sets/overwrites these headers. If exposed directly to the internet without a proxy, clients can spoof their IP to bypass rate limits. In production, Azure Container Apps ingress always sets `X-Forwarded-For`.
 
 ### Metrics: `backend/internal/metrics/`
 - Prometheus counters and histograms (no namespace prefix)

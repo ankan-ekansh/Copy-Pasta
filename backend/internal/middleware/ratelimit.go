@@ -37,9 +37,10 @@ func RateLimitAPI() func(http.Handler) http.Handler {
 }
 
 func rateLimitExceededHandler() http.HandlerFunc {
+	retryAfter := strconv.Itoa(int(rateLimitWindow.Seconds()))
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Retry-After", "60")
+		w.Header().Set("Retry-After", retryAfter)
 		w.WriteHeader(http.StatusTooManyRequests)
 		json.NewEncoder(w).Encode(map[string]string{
 			"error": "rate limit exceeded, try again later",

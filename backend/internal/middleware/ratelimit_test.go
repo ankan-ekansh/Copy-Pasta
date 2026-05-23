@@ -91,26 +91,28 @@ func TestRateLimitConvert_DifferentIPsAreIndependent(t *testing.T) {
 func TestEnvIntOrDefault(t *testing.T) {
 	tests := []struct {
 		name     string
+		key      string
 		envVal   string
+		setEnv   bool
 		defVal   int
 		expected int
 	}{
-		{"empty uses default", "", 10, 10},
-		{"valid int", "20", 10, 20},
-		{"invalid string", "abc", 10, 10},
-		{"zero uses default", "0", 10, 10},
-		{"negative uses default", "-5", 10, 10},
+		{"empty uses default", "TEST_RL_EMPTY", "", true, 10, 10},
+		{"valid int", "TEST_RL_VALID", "20", true, 10, 20},
+		{"invalid string", "TEST_RL_INVALID", "abc", true, 10, 10},
+		{"zero uses default", "TEST_RL_ZERO", "0", true, 10, 10},
+		{"negative uses default", "TEST_RL_NEGATIVE", "-5", true, 10, 10},
+		{"unset uses default", "TEST_RL_UNSET", "", false, 10, 10},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			key := "TEST_RATE_LIMIT_" + tt.name
-			if tt.envVal != "" {
-				t.Setenv(key, tt.envVal)
+			if tt.setEnv {
+				t.Setenv(tt.key, tt.envVal)
 			}
-			got := envIntOrDefault(key, tt.defVal)
+			got := envIntOrDefault(tt.key, tt.defVal)
 			if got != tt.expected {
-				t.Errorf("envIntOrDefault(%q, %d) = %d, want %d", key, tt.defVal, got, tt.expected)
+				t.Errorf("envIntOrDefault(%q, %d) = %d, want %d", tt.key, tt.defVal, got, tt.expected)
 			}
 		})
 	}

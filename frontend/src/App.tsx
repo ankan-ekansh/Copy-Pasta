@@ -36,7 +36,7 @@ function App() {
   const [isPublic, setIsPublic] = useState(false);
   const resultIdRef = useRef<string | undefined>(undefined);
   const [conversionCount, setConversionCount] = useState(0);
-  const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState('');
   const [isConverting, setIsConverting] = useState(false);
   const [historyRefresh, setHistoryRefresh] = useState(0);
@@ -91,8 +91,8 @@ function App() {
   };
 
   const handleTogglePublic = async (id: string, newValue: boolean) => {
-    if (publishingId === id) return;
-    setPublishingId(id);
+    if (publishingIds.has(id)) return;
+    setPublishingIds(prev => new Set(prev).add(id));
     try {
       await setPublic(id, newValue);
       if (id === resultIdRef.current) {
@@ -102,7 +102,11 @@ function App() {
     } catch (err) {
       throw err instanceof Error ? err : new Error('Failed to update visibility', { cause: err });
     } finally {
-      setPublishingId((current) => current === id ? null : current);
+      setPublishingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   };
 
@@ -112,8 +116,16 @@ function App() {
     }
   };
 
-  const handleHistoryPublishingChange = (id: string | null) => {
-    setPublishingId(id);
+  const handleHistoryPublishStart = (id: string) => {
+    setPublishingIds(prev => new Set(prev).add(id));
+  };
+
+  const handleHistoryPublishEnd = (id: string) => {
+    setPublishingIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   };
 
   return (
@@ -302,7 +314,7 @@ function App() {
                 shareUrl={shareUrl}
                 pastaId={result.id}
                 isPublic={isPublic}
-                publishing={publishingId === result.id}
+                publishing={publishingIds.has(result.id ?? '')}
                 onTogglePublic={handleTogglePublic}
               />
             </>
@@ -321,7 +333,7 @@ function App() {
         </div>
 
         <div className="history-column">
-          <HistoryPanel refreshTrigger={historyRefresh} onPublicToggled={handleHistoryPublicToggled} externalPublishingId={publishingId} onPublishingChange={handleHistoryPublishingChange} />
+          <HistoryPanel refreshTrigger={historyRefresh} onPublicToggled={handleHistoryPublicToggled} externalPublishingIds={publishingIds} onPublishStart={handleHistoryPublishStart} onPublishEnd={handleHistoryPublishEnd} />
         </div>
       </main>
       )}

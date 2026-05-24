@@ -568,6 +568,12 @@
   cursor: wait;
 }
 
+.publish-error {
+  color: #ff6b6b;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
 .share-link-input {
   flex: 1;
   padding: 0.5rem 0.75rem;

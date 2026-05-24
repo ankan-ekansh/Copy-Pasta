@@ -14,6 +14,7 @@ export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic 
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState('');
   const preRef = useRef<HTMLPreElement>(null);
   const [hasOverflowX, setHasOverflowX] = useState(false);
 
@@ -63,8 +64,11 @@ export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic 
   const handleTogglePublic = async () => {
     if (!pastaId || !onTogglePublic || publishing) return;
     setPublishing(true);
+    setPublishError('');
     try {
       await onTogglePublic(pastaId, !isPublic);
+    } catch {
+      setPublishError('Failed to update visibility');
     } finally {
       setPublishing(false);
     }
@@ -107,11 +111,13 @@ export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic 
               onClick={handleTogglePublic}
               disabled={publishing}
               aria-pressed={isPublic}
+              aria-label={publishing ? 'Publishing to gallery' : isPublic ? 'Published to gallery' : 'Publish to gallery'}
               title={isPublic ? 'Published to gallery' : 'Publish to gallery'}
             >
-              {publishing ? '⏳' : isPublic ? '🌐 Published' : '📤 Publish'}
+              {publishing ? '⏳ Publishing…' : isPublic ? '🌐 Published' : '📤 Publish'}
             </button>
           )}
+          {publishError && <span className="publish-error" role="alert">{publishError}</span>}
         </div>
       )}
     </section>

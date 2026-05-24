@@ -85,9 +85,16 @@ function App() {
   };
 
   const handleTogglePublic = async (id: string, newValue: boolean) => {
-    await setPublic(id, newValue);
-    setIsPublic(newValue);
-    setHistoryRefresh((n) => n + 1);
+    try {
+      await setPublic(id, newValue);
+      // Only update if the current result still matches
+      if (id === result?.id) {
+        setIsPublic(newValue);
+      }
+      setHistoryRefresh((n) => n + 1);
+    } catch {
+      throw new Error('Failed to update visibility');
+    }
   };
 
   return (

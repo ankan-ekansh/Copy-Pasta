@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image"
 	"image/png"
+	"strings"
 	"testing"
 )
 
@@ -57,13 +58,14 @@ func TestRender_LargeArt(t *testing.T) {
 	r := testRenderer(t)
 
 	// Generate art with many lines and wide content
-	var lines string
+	var sb strings.Builder
+	line := "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz!@#$\n"
 	for i := 0; i < 200; i++ {
-		lines += "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz!@#$\n"
+		sb.WriteString(line)
 	}
 
 	var buf bytes.Buffer
-	err := r.Render(&buf, lines)
+	err := r.Render(&buf, sb.String())
 	if err != nil {
 		t.Fatalf("Render() with large art: %v", err)
 	}

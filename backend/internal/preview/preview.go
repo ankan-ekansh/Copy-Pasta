@@ -132,7 +132,7 @@ func (rr *Renderer) Render(w io.Writer, asciiArt string) error {
 		Face: face,
 	}
 
-	lineHeight := fixed.I(int(fontSize * 1.2))
+	lineHeight := face.Metrics().Height + face.Metrics().Height/10 // ~10% extra leading
 	startY := fixed.I(padding) + face.Metrics().Ascent
 
 	for i, line := range lines {

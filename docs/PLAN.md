@@ -364,15 +364,20 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 
 | Task | Status |
 |------|--------|
-| Add `pastaId`, `isPublic`, `onTogglePublic` props to `AsciiOutput` | Planned |
-| Render publish toggle button in share row (📤 Publish / 🌐 Published ✓) | Planned |
-| Optimistic UI with revert on error, disabled state during API call | Planned |
-| Style published state with accent highlight | Planned |
-| Keep HistoryPanel toggle unchanged (for managing older pastas) | Planned |
+| Add `pastaId`, `isPublic`, `onTogglePublic` props to `AsciiOutput` | ⬜ |
+| Render publish toggle button in share row (📤 Publish / 🌐 Published ✓) | ⬜ |
+| Optimistic UI with revert on error, disabled state during API call | ⬜ |
+| Style published state with accent highlight | ⬜ |
+| Keep HistoryPanel toggle unchanged (for managing older pastas) | ⬜ |
+
+### Edge Cases & Data Flow
+- **`pastaId` unavailable** (persistence not configured or save failed): Hide the publish button entirely. It only appears when `result.id` is present.
+- **`isPublic` source**: The `/api/convert` response doesn't include `is_public`. Default to `false` for freshly converted pastas (new pastas are always private initially). Track `isPublic` in local component state, toggled via the `setPublic` API.
+- **No auth**: Since there's no user auth, anyone with the page open can toggle — same as the existing HistoryPanel behavior.
 
 ### Files to Change
 - `frontend/src/components/AsciiOutput.tsx` — new props, publish button in share row
-- `frontend/src/App.tsx` — pass pastaId/isPublic/handler to AsciiOutput
+- `frontend/src/App.tsx` — pass pastaId/isPublic/handler to AsciiOutput, track isPublic state
 - `frontend/src/App.css` — publish button styling (active state)
 
 ---

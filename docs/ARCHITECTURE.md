@@ -51,7 +51,7 @@ These are architectural choices that can bite you if you're unaware. **Keep this
 
 | Area | Constraint | Why it matters |
 |------|-----------|----------------|
-| Upload size | Hardcoded 20MB (`MaxBytesReader` in handler.go) + nginx `client_max_body_size 20m` | Both must match — nginx rejects before backend sees the request if its limit is lower |
+| Upload size | Hardcoded 20MB (`MaxBytesReader` in handler.go); Docker Compose nginx also needs `client_max_body_size 20m` | In Docker Compose, nginx sits in front — its limit must match or exceed the backend's. Production (Azure) has no nginx; only the backend limit applies. |
 | CORS | Origins hardcoded + `CORS_ORIGINS` env override | New domains require updating the default list or setting the env var |
 | Session cookie | 1-year expiry, `Secure` only when TLS detected | On plain HTTP (local dev), cookie is not Secure — fine for dev, not for prod without TLS |
 | Store.Ping() | Not part of the `Store` interface — exposed via type assertion | Adding a new Store implementation? Must also add `Ping()` or health reports "unknown" |

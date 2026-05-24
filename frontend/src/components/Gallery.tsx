@@ -175,16 +175,21 @@ export function Gallery() {
     };
   }, [selectedPasta]);
 
+  const PREVIEW_LINES = 30;
+  const CARD_CONTENT_WIDTH = 240; // conservative estimate accounting for padding at small screens
+  const CHAR_WIDTH_FACTOR = 0.6; // approximate monospace char width at 1px font size
+  const MIN_FONT_SIZE = 2.5;
+  const MAX_FONT_SIZE = 5.5;
+
   // Precompute preview lines and font sizes to avoid splitting on every render
   const previewMap = useMemo(() => {
     const map = new Map<string, { text: string; fontSize: string }>();
     for (const pasta of pastas) {
-      const lines = pasta.ascii_art.split('\n');
-      const preview = lines.slice(0, 30).join('\n');
-      const maxLineLen = Math.max(...lines.slice(0, 30).map(l => l.length), 1);
-      // Target ~280px card content width; scale font to fit
-      const fontSize = Math.min(5.5, Math.max(2.5, 280 / (maxLineLen * 0.6)));
-      map.set(pasta.id, { text: preview, fontSize: `${fontSize.toFixed(1)}px` });
+      const previewLines = pasta.ascii_art.split('\n').slice(0, PREVIEW_LINES);
+      const text = previewLines.join('\n');
+      const maxLineLen = Math.max(...previewLines.map(l => l.length), 1);
+      const fontSize = Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, CARD_CONTENT_WIDTH / (maxLineLen * CHAR_WIDTH_FACTOR)));
+      map.set(pasta.id, { text, fontSize: `${fontSize.toFixed(1)}px` });
     }
     return map;
   }, [pastas]);

@@ -784,13 +784,15 @@
 }
 
 .gallery-card-ascii {
-  font-family: var(--font-mono);
+  font-family: 'DejaVu Sans Mono', var(--font-mono);
   font-size: 5.5px;
   line-height: 1.15;
   white-space: pre;
   margin: 0;
   color: var(--text);
-  text-align: center;
+  text-align: left;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .gallery-card-fade {
@@ -1076,13 +1078,13 @@
 }
 
 .gallery-modal-ascii {
-  font-family: var(--font-mono);
+  font-family: 'DejaVu Sans Mono', var(--font-mono);
   font-size: 8px;
   line-height: 1.15;
   white-space: pre;
   margin: 0;
   color: var(--text);
-  text-align: center;
+  text-align: left;
 }
 
 /* Responsive gallery grid */

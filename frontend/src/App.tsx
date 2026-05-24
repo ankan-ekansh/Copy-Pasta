@@ -112,6 +112,10 @@ function App() {
     }
   };
 
+  const handleHistoryPublishingChange = (id: string | null) => {
+    setPublishingId(id);
+  };
+
   return (
     <div className="app-shell">
       <header className="hero-panel">
@@ -317,7 +321,7 @@ function App() {
         </div>
 
         <div className="history-column">
-          <HistoryPanel refreshTrigger={historyRefresh} onPublicToggled={handleHistoryPublicToggled} externalPublishingId={publishingId} />
+          <HistoryPanel refreshTrigger={historyRefresh} onPublicToggled={handleHistoryPublicToggled} externalPublishingId={publishingId} onPublishingChange={handleHistoryPublishingChange} />
         </div>
       </main>
       )}

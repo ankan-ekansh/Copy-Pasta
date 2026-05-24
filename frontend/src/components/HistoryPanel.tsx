@@ -6,6 +6,7 @@ interface HistoryPanelProps {
   refreshTrigger?: number;
   onPublicToggled?: (id: string, isPublic: boolean) => void;
   externalPublishingId?: string | null;
+  onPublishingChange?: (id: string | null) => void;
 }
 
 type State = { pastas: Pasta[]; loading: boolean; error: string; deleteError: string; publishError: string };
@@ -33,7 +34,7 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-export function HistoryPanel({ refreshTrigger, onPublicToggled, externalPublishingId }: HistoryPanelProps) {
+export function HistoryPanel({ refreshTrigger, onPublicToggled, externalPublishingId, onPublishingChange }: HistoryPanelProps) {
   const [state, dispatch] = useReducer(reducer, { pastas: [], loading: true, error: '', deleteError: '', publishError: '' });
   const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set());
   const publishingRef = useRef<Set<string>>(new Set());
@@ -63,9 +64,10 @@ export function HistoryPanel({ refreshTrigger, onPublicToggled, externalPublishi
   };
 
   const handleTogglePublic = async (id: string, currentlyPublic: boolean) => {
-    if (publishingRef.current.has(id)) return;
+    if (publishingRef.current.has(id) || externalPublishingId === id) return;
     publishingRef.current.add(id);
     setPublishingIds(new Set(publishingRef.current));
+    onPublishingChange?.(id);
     dispatch({ type: 'clear-errors' });
     try {
       await setPublic(id, !currentlyPublic);
@@ -76,6 +78,7 @@ export function HistoryPanel({ refreshTrigger, onPublicToggled, externalPublishi
     } finally {
       publishingRef.current.delete(id);
       setPublishingIds(new Set(publishingRef.current));
+      onPublishingChange?.(null);
     }
   };
 

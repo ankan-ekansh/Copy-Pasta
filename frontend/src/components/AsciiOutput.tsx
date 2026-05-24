@@ -15,12 +15,8 @@ export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic 
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [publishError, setPublishError] = useState('');
-  const [errorIsPublicSnapshot, setErrorIsPublicSnapshot] = useState(isPublic);
   const preRef = useRef<HTMLPreElement>(null);
   const [hasOverflowX, setHasOverflowX] = useState(false);
-
-  // Error is stale if isPublic changed since the error was set
-  const showPublishError = Boolean(publishError) && errorIsPublicSnapshot === isPublic;
 
   useEffect(() => {
     if (!copied) return;
@@ -33,6 +29,12 @@ export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic 
     const timeoutId = window.setTimeout(() => setLinkCopied(false), 2000);
     return () => window.clearTimeout(timeoutId);
   }, [linkCopied]);
+
+  useEffect(() => {
+    if (!publishError) return;
+    const timeoutId = window.setTimeout(() => setPublishError(''), 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [publishError]);
 
   // Detect horizontal overflow for scroll indicator
   useEffect(() => {
@@ -72,7 +74,6 @@ export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic 
       await onTogglePublic(pastaId, !isPublic);
     } catch {
       setPublishError('Failed to update visibility');
-      setErrorIsPublicSnapshot(isPublic);
     }
   };
 
@@ -119,7 +120,7 @@ export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic 
               {publishing ? '⏳ Updating…' : isPublic ? '🌐 Published' : '📤 Publish'}
             </button>
           )}
-          {showPublishError && <span className="publish-error" role="alert">{publishError}</span>}
+          {publishError && <span className="publish-error" role="alert">{publishError}</span>}
         </div>
       )}
     </section>

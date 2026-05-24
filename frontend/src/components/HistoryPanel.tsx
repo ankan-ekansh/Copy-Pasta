@@ -5,6 +5,7 @@ import { listPastas, deletePasta, setPublic, type Pasta } from '../api/pastas';
 interface HistoryPanelProps {
   refreshTrigger?: number;
   onPublicToggled?: (id: string, isPublic: boolean) => void;
+  externalPublishingId?: string | null;
 }
 
 type State = { pastas: Pasta[]; loading: boolean; error: string; deleteError: string; publishError: string };
@@ -32,7 +33,7 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-export function HistoryPanel({ refreshTrigger, onPublicToggled }: HistoryPanelProps) {
+export function HistoryPanel({ refreshTrigger, onPublicToggled, externalPublishingId }: HistoryPanelProps) {
   const [state, dispatch] = useReducer(reducer, { pastas: [], loading: true, error: '', deleteError: '', publishError: '' });
   const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set());
   const publishingRef = useRef<Set<string>>(new Set());
@@ -124,7 +125,7 @@ export function HistoryPanel({ refreshTrigger, onPublicToggled }: HistoryPanelPr
                 type="button"
                 className={`history-btn ${pasta.is_public ? 'history-btn-active' : ''}`}
                 onClick={() => handleTogglePublic(pasta.id, pasta.is_public)}
-                disabled={publishingIds.has(pasta.id)}
+                disabled={publishingIds.has(pasta.id) || externalPublishingId === pasta.id}
                 aria-pressed={pasta.is_public}
                 aria-label={pasta.is_public ? 'Unpublish from gallery' : 'Publish to gallery'}
                 title={pasta.is_public ? 'Published ✓' : 'Publish to gallery'}

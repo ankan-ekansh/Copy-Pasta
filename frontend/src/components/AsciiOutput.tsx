@@ -7,21 +7,20 @@ interface AsciiOutputProps {
   shareUrl?: string | null;
   pastaId?: string | null;
   isPublic?: boolean;
+  publishing?: boolean;
   onTogglePublic?: (id: string, newValue: boolean) => Promise<void>;
 }
 
-export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic = false, onTogglePublic }: AsciiOutputProps) {
+export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic = false, publishing = false, onTogglePublic }: AsciiOutputProps) {
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [publishing, setPublishing] = useState(false);
-  const publishingRef = useRef(false);
   const [publishError, setPublishError] = useState('');
   const [errorIsPublicSnapshot, setErrorIsPublicSnapshot] = useState(isPublic);
   const preRef = useRef<HTMLPreElement>(null);
   const [hasOverflowX, setHasOverflowX] = useState(false);
 
   // Error is stale if isPublic changed since the error was set
-  const showPublishError = publishError && errorIsPublicSnapshot === isPublic;
+  const showPublishError = Boolean(publishError) && errorIsPublicSnapshot === isPublic;
 
   useEffect(() => {
     if (!copied) return;
@@ -67,18 +66,13 @@ export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic 
   };
 
   const handleTogglePublic = async () => {
-    if (!pastaId || !onTogglePublic || publishingRef.current) return;
-    publishingRef.current = true;
-    setPublishing(true);
+    if (!pastaId || !onTogglePublic || publishing) return;
     setPublishError('');
     try {
       await onTogglePublic(pastaId, !isPublic);
     } catch {
       setPublishError('Failed to update visibility');
       setErrorIsPublicSnapshot(isPublic);
-    } finally {
-      publishingRef.current = false;
-      setPublishing(false);
     }
   };
 

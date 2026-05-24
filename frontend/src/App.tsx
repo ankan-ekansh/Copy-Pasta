@@ -36,6 +36,7 @@ function App() {
   const [isPublic, setIsPublic] = useState(false);
   const resultIdRef = useRef<string | undefined>(undefined);
   const [conversionCount, setConversionCount] = useState(0);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [isConverting, setIsConverting] = useState(false);
   const [historyRefresh, setHistoryRefresh] = useState(0);
@@ -90,15 +91,18 @@ function App() {
   };
 
   const handleTogglePublic = async (id: string, newValue: boolean) => {
+    if (publishingId === id) return;
+    setPublishingId(id);
     try {
       await setPublic(id, newValue);
-      // Only update if the current result still matches (ref avoids stale closure)
       if (id === resultIdRef.current) {
         setIsPublic(newValue);
       }
       setHistoryRefresh((n) => n + 1);
-    } catch {
-      throw new Error('Failed to update visibility');
+    } catch (err) {
+      throw err instanceof Error ? err : new Error('Failed to update visibility', { cause: err });
+    } finally {
+      setPublishingId((current) => current === id ? null : current);
     }
   };
 
@@ -294,6 +298,7 @@ function App() {
                 shareUrl={shareUrl}
                 pastaId={result.id}
                 isPublic={isPublic}
+                publishing={publishingId === result.id}
                 onTogglePublic={handleTogglePublic}
               />
             </>
@@ -312,7 +317,7 @@ function App() {
         </div>
 
         <div className="history-column">
-          <HistoryPanel refreshTrigger={historyRefresh} onPublicToggled={handleHistoryPublicToggled} />
+          <HistoryPanel refreshTrigger={historyRefresh} onPublicToggled={handleHistoryPublicToggled} externalPublishingId={publishingId} />
         </div>
       </main>
       )}

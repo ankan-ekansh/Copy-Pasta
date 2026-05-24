@@ -19,6 +19,7 @@ import (
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/logging"
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/metrics"
 	appmiddleware "github.com/ankan-ekansh/Copy-Pasta/backend/internal/middleware"
+	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/preview"
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -49,7 +50,14 @@ func main() {
 		slog.Info("DATABASE_URL not set, persistence disabled")
 	}
 
-	h := handler.New(handler.WithStore(s))
+	// Initialize preview renderer (best-effort — degrades gracefully if font not found)
+	fontPath := os.Getenv("FONT_PATH")
+	renderer, rendererErr := preview.NewRenderer(fontPath)
+	if rendererErr != nil {
+		slog.Warn("preview renderer unavailable (font not found), og:image disabled", "error", rendererErr)
+	}
+
+	h := handler.New(handler.WithStore(s), handler.WithRenderer(renderer))
 	r.Route("/api", func(api chi.Router) {
 		// /api/convert has its own stricter rate limit — excluded from RateLimitAPI
 		api.With(appmiddleware.RateLimitConvert()).Post("/convert", h.Convert)
@@ -61,6 +69,7 @@ func main() {
 			general.Get("/gallery", h.ListGallery)
 			general.Get("/pastas", h.ListPastas)
 			general.Get("/pastas/{id}", h.GetPasta)
+			general.Get("/pastas/{id}/preview.png", h.PreviewImage)
 			general.Delete("/pastas/{id}", h.DeletePasta)
 			general.Patch("/pastas/{id}", h.SetPublic)
 			general.Post("/pastas/{id}/like", h.LikePasta)
@@ -180,16 +189,23 @@ func buildOGMetaTags(pasta *store.Pasta, r *http.Request) string {
 	title := "ASCII Art | Copy-Pasta"
 	description := fmt.Sprintf("%d×%d %s art — turn memes into text art!", pasta.Width, pasta.Height, pasta.Mode)
 	canonicalURL := fmt.Sprintf("%s://%s/pasta/%s", scheme, r.Host, pasta.ID)
+	imageURL := fmt.Sprintf("%s://%s/api/pastas/%s/preview.png", scheme, r.Host, pasta.ID)
 
 	return fmt.Sprintf(`<meta property="og:title" content="%s" />
     <meta property="og:description" content="%s" />
     <meta property="og:url" content="%s" />
+    <meta property="og:image" content="%s" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Copy-Pasta" />
-    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="%s" />
     <meta name="twitter:description" content="%s" />
-    `, html.EscapeString(title), html.EscapeString(description), html.EscapeString(canonicalURL), html.EscapeString(title), html.EscapeString(description))
+    <meta name="twitter:image" content="%s" />
+    `, html.EscapeString(title), html.EscapeString(description), html.EscapeString(canonicalURL),
+		html.EscapeString(imageURL),
+		html.EscapeString(title), html.EscapeString(description), html.EscapeString(imageURL))
 }
 
 // forwardedScheme determines the request scheme from X-Forwarded-Proto (first token),

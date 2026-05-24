@@ -14,6 +14,7 @@ import (
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/converter"
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/metrics"
 	appmiddleware "github.com/ankan-ekansh/Copy-Pasta/backend/internal/middleware"
+	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/preview"
 	"github.com/ankan-ekansh/Copy-Pasta/backend/internal/store"
 
 	_ "image/gif"
@@ -22,7 +23,8 @@ import (
 )
 
 type Handler struct {
-	store store.Store
+	store    store.Store
+	renderer *preview.Renderer
 }
 
 type Option func(*Handler)

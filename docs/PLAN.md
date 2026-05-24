@@ -306,7 +306,7 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 ---
 
 ## Phase 5.5: UI/UX Overhaul — "Make It Beautiful"
-**Status**: Complete  
+**Status**: In Progress (Round 3 planned)  
 **Goal**: Refine the entire frontend for visual consistency, usability, and polish.
 
 ### Problems Identified
@@ -339,7 +339,7 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 | Responsive gallery grid (1/2/3 columns by breakpoint) | ✅ |
 | Skeleton loading states for gallery | ✅ |
 
-### Round 2 — Create Page Polish
+### Round 2 — Create Page Polish ✅
 
 | Task | Status |
 |------|--------|
@@ -355,6 +355,31 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 - `frontend/src/App.css` — collapsible controls, history card hover, preset chips, scroll indicator, share integration
 - `frontend/src/App.tsx` — collapsible settings state (persisted), share card removed (moved into AsciiOutput)
 - `frontend/src/components/AsciiOutput.tsx` — scroll overflow detection, integrated share row
+
+### Round 3 — Publish Toggle in Share Row
+
+**Problem**: The "publish to gallery" toggle is buried in the History panel at the bottom of the page. Users must scroll past the ASCII output to make their pasta public — bad UX since the publish decision happens right after seeing the result.
+
+**Solution**: Add a publish/unpublish button directly in the `AsciiOutput` share row, next to the copy link button.
+
+| Task | Status |
+|------|--------|
+| Add `pastaId`, `isPublic`, `onTogglePublic` props to `AsciiOutput` | ⬜ |
+| Render publish toggle button in share row (📤 Publish / 🌐 Published ✓) | ⬜ |
+| Optimistic UI with revert on error, disabled state during API call | ⬜ |
+| Style published state with accent highlight | ⬜ |
+| Keep HistoryPanel toggle unchanged (for managing older pastas) | ⬜ |
+
+### Edge Cases & Data Flow
+- **`pastaId` unavailable** (persistence not configured or save failed): Hide the publish button entirely. It only appears when `result.id` is present.
+- **`isPublic` source**: The `/api/convert` response doesn't include `is_public`. Default to `false` for freshly converted pastas (new pastas are always private initially). Track `isPublic` in local component state, toggled via the `setPublic` API.
+- **Session ownership**: Toggling visibility is restricted to the browser session that created the pasta (PATCH `/api/pastas/:id` uses session cookie + `SetPublicByOwner`). Only the creator's browser can toggle; others with just the share link cannot.
+- **Sync between toggles**: After a successful publish/unpublish from the share row, bump `historyRefresh` (already exists in App state) so HistoryPanel re-fetches and reflects the updated `is_public` status. This avoids lifting shared state — the source of truth remains the server.
+
+### Files to Change
+- `frontend/src/components/AsciiOutput.tsx` — new props, publish button in share row
+- `frontend/src/App.tsx` — pass pastaId/isPublic/handler to AsciiOutput, track isPublic state
+- `frontend/src/App.css` — publish button styling (active state)
 
 ---
 

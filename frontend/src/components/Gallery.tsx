@@ -26,16 +26,21 @@ export function Gallery() {
   const [hasMore, setHasMore] = useState(true);
   const loadingRef = useRef(false);
 
+  const mountedRef = useRef(true);
+  useEffect(() => { return () => { mountedRef.current = false; }; }, []);
+
   const loadInitialRef = useRef(false);
 
   useEffect(() => {
     if (loadInitialRef.current) return;
     loadInitialRef.current = true;
     listGallery(PAGE_SIZE, 0).then(items => {
+      if (!mountedRef.current) return;
       setPastas(items);
       setHasMore(items.length === PAGE_SIZE);
       setLoading(false);
     }).catch(err => {
+      if (!mountedRef.current) return;
       setError(err instanceof Error ? err.message : 'Failed to load gallery');
       setLoading(false);
     });
@@ -45,11 +50,13 @@ export function Gallery() {
     setLoading(true);
     setError(null);
     listGallery(PAGE_SIZE, 0).then(items => {
+      if (!mountedRef.current) return;
       setPastas(items);
       setHasMore(items.length === PAGE_SIZE);
       setOffset(0);
       setLoading(false);
     }).catch(err => {
+      if (!mountedRef.current) return;
       setError(err instanceof Error ? err.message : 'Failed to load gallery');
       setLoading(false);
     });
@@ -116,20 +123,64 @@ export function Gallery() {
   const modalRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Modal: Escape to close, scroll lock, focus management
+  // Modal: Escape to close, scroll lock, focus trap, inert background
   useEffect(() => {
     if (!selectedPasta) return;
     const previousFocus = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+
+    // Mark background as inert
+    const appRoot = document.getElementById('root');
+    const backdrop = modalRef.current?.parentElement;
+    if (appRoot && backdrop) {
+      // Set inert on siblings of the backdrop (all other top-level content)
+      Array.from(appRoot.children).forEach(child => {
+        if (child !== backdrop && child instanceof HTMLElement) {
+          child.setAttribute('inert', '');
+          child.setAttribute('aria-hidden', 'true');
+        }
+      });
+    }
+
     closeButtonRef.current?.focus();
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSelectedPasta(null);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedPasta(null);
+        return;
+      }
+      // Focus trap
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
-    document.addEventListener('keydown', handler);
+
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener('keydown', handler);
+      document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = previousOverflow;
+      // Remove inert from siblings
+      if (appRoot) {
+        Array.from(appRoot.children).forEach(child => {
+          if (child instanceof HTMLElement) {
+            child.removeAttribute('inert');
+            child.removeAttribute('aria-hidden');
+          }
+        });
+      }
       previousFocus?.focus();
     };
   }, [selectedPasta]);

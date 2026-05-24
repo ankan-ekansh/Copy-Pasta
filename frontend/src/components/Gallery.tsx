@@ -175,12 +175,16 @@ export function Gallery() {
     };
   }, [selectedPasta]);
 
-  // Precompute preview lines to avoid splitting on every render
+  // Precompute preview lines and font sizes to avoid splitting on every render
   const previewMap = useMemo(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, { text: string; fontSize: string }>();
     for (const pasta of pastas) {
       const lines = pasta.ascii_art.split('\n');
-      map.set(pasta.id, lines.slice(0, 30).join('\n'));
+      const preview = lines.slice(0, 30).join('\n');
+      const maxLineLen = Math.max(...lines.slice(0, 30).map(l => l.length), 1);
+      // Target ~280px card content width; scale font to fit
+      const fontSize = Math.min(5.5, Math.max(2.5, 280 / (maxLineLen * 0.6)));
+      map.set(pasta.id, { text: preview, fontSize: `${fontSize.toFixed(1)}px` });
     }
     return map;
   }, [pastas]);
@@ -218,8 +222,8 @@ export function Gallery() {
               onClick={() => setSelectedPasta(pasta)}
               aria-label="View full ASCII art"
             >
-              <pre className="gallery-card-ascii">
-                {previewMap.get(pasta.id)}
+              <pre className="gallery-card-ascii" style={{ fontSize: previewMap.get(pasta.id)?.fontSize }}>
+                {previewMap.get(pasta.id)?.text}
               </pre>
               <div className="gallery-card-fade" />
             </button>

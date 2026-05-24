@@ -1,13 +1,11 @@
-import { useEffect, useReducer, useState, useRef } from 'react';
+import { useEffect, useReducer } from 'react';
 import { Link } from 'react-router-dom';
-import { listPastas, deletePasta, setPublic, type Pasta } from '../api/pastas';
+import { listPastas, deletePasta, type Pasta } from '../api/pastas';
 
 interface HistoryPanelProps {
   refreshTrigger?: number;
-  onPublicToggled?: (id: string, isPublic: boolean) => void;
-  externalPublishingIds?: Set<string>;
-  onPublishStart?: (id: string) => void;
-  onPublishEnd?: (id: string) => void;
+  onTogglePublic?: (id: string, newValue: boolean) => Promise<void>;
+  publishingIds?: Set<string>;
 }
 
 type State = { pastas: Pasta[]; loading: boolean; error: string; deleteError: string; publishError: string };
@@ -35,10 +33,8 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-export function HistoryPanel({ refreshTrigger, onPublicToggled, externalPublishingIds, onPublishStart, onPublishEnd }: HistoryPanelProps) {
+export function HistoryPanel({ refreshTrigger, onTogglePublic, publishingIds: externalPublishingIds }: HistoryPanelProps) {
   const [state, dispatch] = useReducer(reducer, { pastas: [], loading: true, error: '', deleteError: '', publishError: '' });
-  const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set());
-  const publishingRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -65,21 +61,13 @@ export function HistoryPanel({ refreshTrigger, onPublicToggled, externalPublishi
   };
 
   const handleTogglePublic = async (id: string, currentlyPublic: boolean) => {
-    if (publishingRef.current.has(id) || externalPublishingIds?.has(id)) return;
-    publishingRef.current.add(id);
-    setPublishingIds(new Set(publishingRef.current));
-    onPublishStart?.(id);
+    if (!onTogglePublic || externalPublishingIds?.has(id)) return;
     dispatch({ type: 'clear-errors' });
     try {
-      await setPublic(id, !currentlyPublic);
+      await onTogglePublic(id, !currentlyPublic);
       dispatch({ type: 'toggle-public', id, isPublic: !currentlyPublic });
-      onPublicToggled?.(id, !currentlyPublic);
     } catch {
       dispatch({ type: 'publish-error', message: 'Failed to update visibility' });
-    } finally {
-      publishingRef.current.delete(id);
-      setPublishingIds(new Set(publishingRef.current));
-      onPublishEnd?.(id);
     }
   };
 
@@ -129,7 +117,7 @@ export function HistoryPanel({ refreshTrigger, onPublicToggled, externalPublishi
                 type="button"
                 className={`history-btn ${pasta.is_public ? 'history-btn-active' : ''}`}
                 onClick={() => handleTogglePublic(pasta.id, pasta.is_public)}
-                disabled={publishingIds.has(pasta.id) || (externalPublishingIds?.has(pasta.id) ?? false)}
+                disabled={externalPublishingIds?.has(pasta.id) ?? false}
                 aria-pressed={pasta.is_public}
                 aria-label={pasta.is_public ? 'Unpublish from gallery' : 'Publish to gallery'}
                 title={pasta.is_public ? 'Published ✓' : 'Publish to gallery'}

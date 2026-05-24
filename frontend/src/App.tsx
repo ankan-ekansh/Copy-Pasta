@@ -90,42 +90,24 @@ function App() {
     }
   };
 
+  const publishingRef = useRef<Set<string>>(new Set());
+
   const handleTogglePublic = async (id: string, newValue: boolean) => {
-    if (publishingIds.has(id)) return;
-    setPublishingIds(prev => new Set(prev).add(id));
+    if (publishingRef.current.has(id)) return;
+    publishingRef.current.add(id);
+    setPublishingIds(new Set(publishingRef.current));
     try {
       await setPublic(id, newValue);
       if (id === resultIdRef.current) {
         setIsPublic(newValue);
       }
-      setHistoryRefresh((n) => n + 1);
     } catch (err) {
       throw err instanceof Error ? err : new Error('Failed to update visibility', { cause: err });
     } finally {
-      setPublishingIds(prev => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      publishingRef.current.delete(id);
+      setPublishingIds(new Set(publishingRef.current));
+      setHistoryRefresh((n) => n + 1);
     }
-  };
-
-  const handleHistoryPublicToggled = (id: string, newValue: boolean) => {
-    if (id === resultIdRef.current) {
-      setIsPublic(newValue);
-    }
-  };
-
-  const handleHistoryPublishStart = (id: string) => {
-    setPublishingIds(prev => new Set(prev).add(id));
-  };
-
-  const handleHistoryPublishEnd = (id: string) => {
-    setPublishingIds(prev => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
   };
 
   return (
@@ -333,7 +315,7 @@ function App() {
         </div>
 
         <div className="history-column">
-          <HistoryPanel refreshTrigger={historyRefresh} onPublicToggled={handleHistoryPublicToggled} externalPublishingIds={publishingIds} onPublishStart={handleHistoryPublishStart} onPublishEnd={handleHistoryPublishEnd} />
+          <HistoryPanel refreshTrigger={historyRefresh} onTogglePublic={handleTogglePublic} publishingIds={publishingIds} />
         </div>
       </main>
       )}

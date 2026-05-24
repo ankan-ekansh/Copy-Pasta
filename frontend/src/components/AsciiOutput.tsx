@@ -31,6 +31,10 @@ export function AsciiOutput({ ascii, width, height, shareUrl }: AsciiOutputProps
     if (!el) return;
     const check = () => setHasOverflowX(el.scrollWidth > el.clientWidth);
     check();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', check);
+      return () => window.removeEventListener('resize', check);
+    }
     const observer = new ResizeObserver(check);
     observer.observe(el);
     return () => observer.disconnect();

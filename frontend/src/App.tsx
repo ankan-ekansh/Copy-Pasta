@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { convertImage, type ConvertResponse, type ConvertMode } from './api/convert';
 import { AsciiOutput } from './components/AsciiOutput';
 import { ImageUploader } from './components/ImageUploader';
@@ -42,12 +42,12 @@ function App() {
   });
 
   const toggleSettings = () => {
-    setSettingsOpen(prev => {
-      const next = !prev;
-      localStorage.setItem('copy-pasta-settings-open', String(next));
-      return next;
-    });
+    setSettingsOpen(prev => !prev);
   };
+
+  useEffect(() => {
+    localStorage.setItem('copy-pasta-settings-open', String(settingsOpen));
+  }, [settingsOpen]);
 
   const shareUrl = result?.id
     ? `${window.location.origin}/pasta/${encodeURIComponent(result.id)}`
@@ -150,7 +150,7 @@ function App() {
               </div>
             </button>
 
-            <div id="controls-panel" role="region" aria-labelledby="controls-heading" className={`controls-body ${settingsOpen ? 'open' : ''}`}>
+            <div id="controls-panel" role="region" aria-labelledby="controls-heading" className={`controls-body ${settingsOpen ? 'open' : ''}`} {...(!settingsOpen && { inert: '' })}>
             <div className="controls-body-inner">
 
             <label className="range-control" htmlFor="width">

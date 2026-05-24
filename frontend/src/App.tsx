@@ -101,12 +101,12 @@ function App() {
       if (id === resultIdRef.current) {
         setIsPublic(newValue);
       }
+      setHistoryRefresh((n) => n + 1);
     } catch (err) {
       throw err instanceof Error ? err : new Error('Failed to update visibility', { cause: err });
     } finally {
       publishingRef.current.delete(id);
       setPublishingIds(new Set(publishingRef.current));
-      setHistoryRefresh((n) => n + 1);
     }
   };
 

@@ -21,7 +21,7 @@ type Action =
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'fetch': return { ...state, loading: true, error: '', deleteError: '', publishError: '' };
+    case 'fetch': return { ...state, loading: state.pastas.length === 0, error: '', deleteError: '', publishError: '' };
     case 'loaded': return { ...state, pastas: action.pastas, loading: false, error: '' };
     case 'error': return { ...state, loading: false, error: action.message };
     case 'remove': return { ...state, pastas: state.pastas.filter((p) => p.id !== action.id) };

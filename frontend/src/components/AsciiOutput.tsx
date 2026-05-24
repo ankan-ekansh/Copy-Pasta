@@ -14,6 +14,7 @@ export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic 
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const publishingRef = useRef(false);
   const [publishError, setPublishError] = useState('');
   const preRef = useRef<HTMLPreElement>(null);
   const [hasOverflowX, setHasOverflowX] = useState(false);
@@ -62,7 +63,8 @@ export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic 
   };
 
   const handleTogglePublic = async () => {
-    if (!pastaId || !onTogglePublic || publishing) return;
+    if (!pastaId || !onTogglePublic || publishingRef.current) return;
+    publishingRef.current = true;
     setPublishing(true);
     setPublishError('');
     try {
@@ -70,6 +72,7 @@ export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic 
     } catch {
       setPublishError('Failed to update visibility');
     } finally {
+      publishingRef.current = false;
       setPublishing(false);
     }
   };

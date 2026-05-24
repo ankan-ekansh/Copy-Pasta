@@ -115,17 +115,19 @@ export function HistoryPanel({ refreshTrigger, onTogglePublic, publishingIds: ex
               </span>
             </div>
             <div className="history-item-actions">
-              <button
-                type="button"
-                className={`history-btn ${pasta.is_public ? 'history-btn-active' : ''}`}
-                onClick={() => handleTogglePublic(pasta.id, pasta.is_public)}
-                disabled={externalPublishingIds?.has(pasta.id) ?? false}
-                aria-pressed={pasta.is_public}
-                aria-label={pasta.is_public ? 'Unpublish from gallery' : 'Publish to gallery'}
-                title={pasta.is_public ? 'Published ✓' : 'Publish to gallery'}
-              >
-                {pasta.is_public ? '🌐' : '📤'}
-              </button>
+              {onTogglePublic && (
+                <button
+                  type="button"
+                  className={`history-btn ${pasta.is_public ? 'history-btn-active' : ''}`}
+                  onClick={() => handleTogglePublic(pasta.id, pasta.is_public)}
+                  disabled={externalPublishingIds?.has(pasta.id) ?? false}
+                  aria-pressed={pasta.is_public}
+                  aria-label={pasta.is_public ? 'Unpublish from gallery' : 'Publish to gallery'}
+                  title={pasta.is_public ? 'Published ✓' : 'Publish to gallery'}
+                >
+                  {pasta.is_public ? '🌐' : '📤'}
+                </button>
+              )}
               <button
                 type="button"
                 className="history-btn"

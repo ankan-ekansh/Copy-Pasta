@@ -305,6 +305,60 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 
 ---
 
+## Phase 5.5: UI/UX Overhaul — "Make It Beautiful"
+**Status**: In progress  
+**Goal**: Refine the entire frontend for visual consistency, usability, and polish.
+
+### Problems Identified
+- Gallery uses undefined CSS vars (`--surface`, `--primary`) → falls back to browser defaults
+- Gallery card previews at 4px font are unreadable; `border-radius: 12px` inconsistent with app's `24px`
+- Inline card expansion causes layout shift; expanded view capped at 400px is still cramped
+- Gallery toggle buried among feature badges — not discoverable
+- History panel visually bland vs polished hero/controls panels
+- No responsive breakpoints for gallery grid
+- Loading state is plain text ("Loading...") — no skeleton/pulse
+- Image preview crops with `object-fit: cover` + static `max-height: 320px`
+- Recent Pastas section cramped — dense table-like rows with tiny icons
+- ASCII output has no horizontal scroll indicator
+- Conversion settings take too much vertical space (rarely changed after first use)
+- Share section feels disconnected from the ASCII output
+
+### Design Principles
+- Match existing aesthetic: glassmorphic panels, `var(--panel)`, `border-radius: 24px`, `var(--shadow)`
+- Accent gradient (`--accent` → `--accent-2`) for primary actions
+- `--panel-soft` for nested elements, generous padding, clean spacing
+
+### Round 1 (PR #31) — Gallery & Navigation ✅
+
+| Task | Status |
+|------|--------|
+| Fix undefined CSS variable references (`--surface`→`--panel`, `--primary`→`--accent`) | ✅ |
+| Gallery cards restyle (24px radius, readable font, gradient fade on preview) | ✅ |
+| Replace inline expansion with modal overlay (no layout shift, larger art) | ✅ |
+| Proper tab navigation ("Create" / "Gallery") instead of buried badge | ✅ |
+| Responsive gallery grid (1/2/3 columns by breakpoint) | ✅ |
+| Skeleton loading states for gallery | ✅ |
+
+### Round 2 — Create Page Polish
+
+| Task | Status |
+|------|--------|
+| Fix image preview cropping (`object-fit: contain`, remove static max-height cap) | ⬜ |
+| Restyle "Recent Pastas" as proper cards (not dense table rows) | ⬜ |
+| Add horizontal scroll indicator to ASCII output panel | ⬜ |
+| Make Conversion Settings collapsible (accordion, collapsed by default after first use) | ⬜ |
+| Move Share section into ASCII output card (integrated, not separate) | ⬜ |
+| History panel polish (hover effects, toggle switch for publish) | ⬜ |
+| Quick share presets — improve readability (larger text, better contrast) | ⬜ |
+
+### Files to Change
+- `frontend/src/App.css` — bulk of styling fixes
+- `frontend/src/index.css` — add missing CSS vars if needed
+- `frontend/src/components/Gallery.tsx` — restructure preview, add modal
+- `frontend/src/App.tsx` — navigation restructure, collapsible settings, share integration
+
+---
+
 ## Phase 6: Production Hardening — "Bulletproof It"
 **Status**: Planned  
 **Goal**: Harden for real traffic and add operational maturity.

@@ -82,23 +82,33 @@ function App() {
             nerdy text art.
           </p>
         </div>
-        <div className="hero-badges" aria-label="App features and navigation">
+        <div className="hero-badges" aria-label="App features">
           <span>📋 Paste friendly</span>
           <span>🎚️ Width controls</span>
           <span>🌗 Invert mode</span>
+        </div>
+        <nav className="view-tabs" aria-label="Main navigation">
           <button
             type="button"
-            className={`nav-badge ${view === 'gallery' ? 'active' : ''}`}
-            onClick={() => setView(view === 'gallery' ? 'app' : 'gallery')}
+            className={`view-tab ${view === 'app' ? 'active' : ''}`}
+            onClick={() => setView('app')}
+            aria-pressed={view === 'app'}
+          >
+            🎨 Create
+          </button>
+          <button
+            type="button"
+            className={`view-tab ${view === 'gallery' ? 'active' : ''}`}
+            onClick={() => setView('gallery')}
             aria-pressed={view === 'gallery'}
           >
             🖼️ Gallery
           </button>
-        </div>
+        </nav>
       </header>
 
       {view === 'gallery' ? (
-        <Gallery onBack={() => setView('app')} />
+        <Gallery />
       ) : (
       <main className="app-grid">
         <div className="panel-stack">

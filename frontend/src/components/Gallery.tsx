@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type MouseEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { listGallery, likePasta, unlikePasta, type GalleryPasta } from '../api/gallery';
 
 const PAGE_SIZE = 20;
@@ -130,17 +131,11 @@ export function Gallery() {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // Mark background as inert
+    // Mark #root as inert (modal is portaled to document.body, outside #root)
     const appRoot = document.getElementById('root');
-    const backdrop = modalRef.current?.parentElement;
-    if (appRoot && backdrop) {
-      // Set inert on siblings of the backdrop (all other top-level content)
-      Array.from(appRoot.children).forEach(child => {
-        if (child !== backdrop && child instanceof HTMLElement) {
-          child.setAttribute('inert', '');
-          child.setAttribute('aria-hidden', 'true');
-        }
-      });
+    if (appRoot) {
+      appRoot.setAttribute('inert', '');
+      appRoot.setAttribute('aria-hidden', 'true');
     }
 
     closeButtonRef.current?.focus();
@@ -172,14 +167,9 @@ export function Gallery() {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = previousOverflow;
-      // Remove inert from siblings
       if (appRoot) {
-        Array.from(appRoot.children).forEach(child => {
-          if (child instanceof HTMLElement) {
-            child.removeAttribute('inert');
-            child.removeAttribute('aria-hidden');
-          }
-        });
+        appRoot.removeAttribute('inert');
+        appRoot.removeAttribute('aria-hidden');
       }
       previousFocus?.focus();
     };
@@ -283,8 +273,8 @@ export function Gallery() {
         </button>
       )}
 
-      {/* Modal overlay for full art view */}
-      {selectedPasta && (
+      {/* Modal rendered via portal to document.body so #root can be inerted */}
+      {selectedPasta && createPortal(
         <div className="gallery-modal-backdrop" onClick={handleModalClose}>
           <div className="gallery-modal" ref={modalRef} role="dialog" aria-modal="true" aria-label="Full ASCII art view" tabIndex={-1}>
             <div className="gallery-modal-header">
@@ -327,7 +317,8 @@ export function Gallery() {
               <pre className="gallery-modal-ascii">{selectedPasta.ascii_art}</pre>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

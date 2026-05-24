@@ -100,9 +100,14 @@ func TestRender_ImageDimensions(t *testing.T) {
 	}
 }
 
-func TestNewRenderer_InvalidPath(t *testing.T) {
-	_, err := NewRenderer("/nonexistent/font.ttf")
+func TestNewRenderer_NoFontsAvailable(t *testing.T) {
+	// Save and restore default paths
+	origPaths := DefaultFontPaths
+	DefaultFontPaths = []string{"/nonexistent/a.ttf", "/nonexistent/b.ttf"}
+	defer func() { DefaultFontPaths = origPaths }()
+
+	_, err := NewRenderer("/also/nonexistent/font.ttf")
 	if err == nil {
-		t.Error("NewRenderer() with invalid path should return error")
+		t.Error("NewRenderer() should return error when no fonts are reachable")
 	}
 }

@@ -3,6 +3,11 @@ import { createPortal } from 'react-dom';
 import { listGallery, likePasta, unlikePasta, type GalleryPasta } from '../api/gallery';
 
 const PAGE_SIZE = 20;
+const PREVIEW_LINES = 30;
+const CARD_CONTENT_WIDTH = 240;
+const CHAR_WIDTH_FACTOR = 0.6;
+const MIN_FONT_SIZE = 2.5;
+const MAX_FONT_SIZE = 5.5;
 
 function relativeTime(dateStr: string) {
   const date = new Date(dateStr);
@@ -175,17 +180,11 @@ export function Gallery() {
     };
   }, [selectedPasta]);
 
-  const PREVIEW_LINES = 30;
-  const CARD_CONTENT_WIDTH = 240; // conservative estimate accounting for padding at small screens
-  const CHAR_WIDTH_FACTOR = 0.6; // approximate monospace char width at 1px font size
-  const MIN_FONT_SIZE = 2.5;
-  const MAX_FONT_SIZE = 5.5;
-
   // Precompute preview lines and font sizes to avoid splitting on every render
   const previewMap = useMemo(() => {
     const map = new Map<string, { text: string; fontSize: string }>();
     for (const pasta of pastas) {
-      const previewLines = pasta.ascii_art.split('\n').slice(0, PREVIEW_LINES);
+      const previewLines = pasta.ascii_art.split('\n', PREVIEW_LINES);
       const text = previewLines.join('\n');
       const maxLineLen = Math.max(...previewLines.map(l => l.length), 1);
       const fontSize = Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, CARD_CONTENT_WIDTH / (maxLineLen * CHAR_WIDTH_FACTOR)));

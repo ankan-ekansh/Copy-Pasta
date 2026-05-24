@@ -27,6 +27,7 @@ A fun web app that converts meme images into ASCII art that you can copy-paste a
 - **Persistence**: Conversions auto-saved to PostgreSQL with shareable links
 - **Share page**: View any pasta via `/pasta/:id` — read-only, copyable
 - **History panel**: Recent conversions with share link, view, delete, and publish/unpublish toggle
+- **Publish from share row**: Toggle gallery visibility directly from the ASCII output — no scrolling to history needed
 - **Session-based ownership**: Anonymous cookie-based sessions, no login required
 - **REST API**: Manage pastas (list, view, delete, publish) with auto-save on convert
 - **Public gallery**: Browse published pastas, like/unlike, paginated feed

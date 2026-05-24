@@ -220,14 +220,15 @@ Global middleware chain (in order):
 ### nginx Config (`frontend/nginx.conf`)
 - `client_max_body_size 20m` — allows uploads up to 20MB (matches backend's `MaxBytesReader` limit)
 - `try_files $uri $uri/ /index.html` — SPA fallback for client-side routing
-- Proxies `/api/` and `/metrics` to backend service
+- Proxies `/api/` to backend service (backend handles `/metrics` directly — not proxied via nginx)
 
 ### State Management Patterns
 
 **Publish toggle coordination (`App.tsx`):**
 - `publishingRef` (`useRef<Set<string>>`) provides synchronous double-click prevention — React state is async and can't guard against rapid clicks
 - `handleTogglePublic` returns `Promise<boolean>` — `false` when guarded (no-op), `true` when API call executed
-- Callers (HistoryPanel, AsciiOutput) check the return value before applying optimistic state updates
+- HistoryPanel checks the return value before dispatching its local state update; AsciiOutput receives `isPublic` as a prop from App (updated after API resolves)
+- UI is pessimistic: button shows disabled/loading state during API call, updates only after success
 - After successful toggle, bumps `historyRefresh` counter to sync HistoryPanel with server state
 
 **Delete with result clearing (`App.tsx`):**
@@ -235,9 +236,9 @@ Global middleware chain (in order):
 - Prevents stale display of a pasta that no longer exists
 
 ### Gallery Preview (`Gallery.tsx`)
-- Module-scope constants: `PAGE_SIZE`, `PREVIEW_LINES`, `CARD_CONTENT_WIDTH`, `BASE_FONT_SIZE`, `FONT_SCALE_DIVISOR`
+- Module-scope constants: `PAGE_SIZE`, `PREVIEW_LINES`, `CARD_CONTENT_WIDTH`, `CHAR_WIDTH_FACTOR`, `MIN_FONT_SIZE`, `MAX_FONT_SIZE`
 - Preview text uses `split('\n', PREVIEW_LINES)` — limits array allocation without slicing
-- Dynamic font-size: `BASE_FONT_SIZE / (maxLineWidth / FONT_SCALE_DIVISOR)` — scales down for wider art
+- Dynamic font-size: `CARD_CONTENT_WIDTH / (maxLineLen * CHAR_WIDTH_FACTOR)` clamped between `MIN_FONT_SIZE` and `MAX_FONT_SIZE`
 - `text-align: left` on `<pre>` with flex centering on container — prevents line-by-line centering that destroys braille grid alignment
 - Uses `DejaVu Sans Mono` for better braille glyph rendering
 

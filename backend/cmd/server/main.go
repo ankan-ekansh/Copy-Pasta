@@ -104,7 +104,7 @@ func main() {
 		spaHandler := spaFileServer(root)
 
 		// Serve /pasta/:id with OG meta tags injected (with and without trailing slash)
-		ogHandler := ogMetaHandler(root, s)
+		ogHandler := ogMetaHandler(root, s, renderer != nil)
 		r.Get("/pasta/{id}", ogHandler)
 		r.Get("/pasta/{id}/", ogHandler)
 
@@ -149,7 +149,7 @@ func spaFileServer(root fs.FS) http.HandlerFunc {
 // ogMetaHandler serves index.html with OG meta tags injected for /pasta/:id routes.
 // Caches the base HTML at startup. Injects dynamic tags at the <!-- og:dynamic --> placeholder,
 // or falls back to plain index.html if the pasta can't be loaded.
-func ogMetaHandler(root fs.FS, s store.Store) http.HandlerFunc {
+func ogMetaHandler(root fs.FS, s store.Store, previewAvailable bool) http.HandlerFunc {
 	indexBytes, err := fs.ReadFile(root, "index.html")
 	if err != nil {
 		slog.Error("og meta: failed to read index.html at startup", "error", err)
@@ -170,7 +170,7 @@ func ogMetaHandler(root fs.FS, s store.Store) http.HandlerFunc {
 
 			pasta, err := s.Get(ctx, id)
 			if err == nil {
-				ogTags := buildOGMetaTags(pasta, r)
+				ogTags := buildOGMetaTags(pasta, r, previewAvailable)
 				// Replace placeholder with dynamic tags (scrapers use first occurrence)
 				result = strings.Replace(result, placeholder, ogTags, 1)
 			} else if !errors.Is(err, store.ErrNotFound) {
@@ -184,28 +184,35 @@ func ogMetaHandler(root fs.FS, s store.Store) http.HandlerFunc {
 }
 
 // buildOGMetaTags generates Open Graph and Twitter Card meta tags for a pasta.
-func buildOGMetaTags(pasta *store.Pasta, r *http.Request) string {
+func buildOGMetaTags(pasta *store.Pasta, r *http.Request, includeImage bool) string {
 	scheme := forwardedScheme(r)
 	title := "ASCII Art | Copy-Pasta"
 	description := fmt.Sprintf("%d×%d %s art — turn memes into text art!", pasta.Width, pasta.Height, pasta.Mode)
 	canonicalURL := fmt.Sprintf("%s://%s/pasta/%s", scheme, r.Host, pasta.ID)
-	imageURL := fmt.Sprintf("%s://%s/api/pastas/%s/preview.png", scheme, r.Host, pasta.ID)
+
+	twitterCard := "summary"
+	imageTags := ""
+	if includeImage {
+		imageURL := fmt.Sprintf("%s://%s/api/pastas/%s/preview.png", scheme, r.Host, pasta.ID)
+		twitterCard = "summary_large_image"
+		imageTags = fmt.Sprintf(`<meta property="og:image" content="%s" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:image" content="%s" />
+    `, html.EscapeString(imageURL), html.EscapeString(imageURL))
+	}
 
 	return fmt.Sprintf(`<meta property="og:title" content="%s" />
     <meta property="og:description" content="%s" />
     <meta property="og:url" content="%s" />
-    <meta property="og:image" content="%s" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:type" content="website" />
+    %s<meta property="og:type" content="website" />
     <meta property="og:site_name" content="Copy-Pasta" />
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:card" content="%s" />
     <meta name="twitter:title" content="%s" />
     <meta name="twitter:description" content="%s" />
-    <meta name="twitter:image" content="%s" />
     `, html.EscapeString(title), html.EscapeString(description), html.EscapeString(canonicalURL),
-		html.EscapeString(imageURL),
-		html.EscapeString(title), html.EscapeString(description), html.EscapeString(imageURL))
+		imageTags,
+		twitterCard, html.EscapeString(title), html.EscapeString(description))
 }
 
 // forwardedScheme determines the request scheme from X-Forwarded-Proto (first token),

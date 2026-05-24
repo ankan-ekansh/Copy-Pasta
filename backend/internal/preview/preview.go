@@ -48,31 +48,31 @@ func findFont(extraPath string) ([]byte, error) {
 	return nil, os.ErrNotExist
 }
 
-func newFace(fontData []byte, size float64) (font.Face, error) {
-	f, err := opentype.Parse(fontData)
-	if err != nil {
-		return nil, err
-	}
-	return opentype.NewFace(f, &opentype.FaceOptions{
-		Size:    size,
-		DPI:     72,
-		Hinting: font.HintingFull,
-	})
-}
-
 // Renderer holds a parsed font for reuse across requests.
 type Renderer struct {
-	fontData []byte
+	font *opentype.Font
 }
 
-// NewRenderer creates a Renderer, loading the font from disk.
-// fontPath overrides the default search paths if non-empty.
+// NewRenderer creates a Renderer, loading and parsing the font from disk.
+// If fontPath is non-empty it is searched first, then the default paths are tried.
 func NewRenderer(fontPath string) (*Renderer, error) {
 	data, err := findFont(fontPath)
 	if err != nil {
 		return nil, err
 	}
-	return &Renderer{fontData: data}, nil
+	f, err := opentype.Parse(data)
+	if err != nil {
+		return nil, err
+	}
+	return &Renderer{font: f}, nil
+}
+
+func (rr *Renderer) newFace(size float64) (font.Face, error) {
+	return opentype.NewFace(rr.font, &opentype.FaceOptions{
+		Size:    size,
+		DPI:     72,
+		Hinting: font.HintingFull,
+	})
 }
 
 // Render draws the ASCII art onto a 1200x630 PNG and writes it to w.
@@ -113,7 +113,7 @@ func (rr *Renderer) Render(w io.Writer, asciiArt string) error {
 		fontSize = 20
 	}
 
-	face, err := newFace(rr.fontData, fontSize)
+	face, err := rr.newFace(fontSize)
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func (rr *Renderer) Render(w io.Writer, asciiArt string) error {
 	}
 
 	// Draw branding
-	brandFace, err := newFace(rr.fontData, 12)
+	brandFace, err := rr.newFace(12)
 	if err == nil {
 		defer brandFace.Close()
 		bd := &font.Drawer{

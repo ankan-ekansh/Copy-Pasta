@@ -31,10 +31,11 @@
 
 ### Entry Point: `backend/cmd/server/main.go`
 - Creates Chi router with middleware (CORS, logging, recoverer, session cookies)
-- Registers routes: `POST /api/convert`, `GET /api/health`, `GET /api/gallery`, `/api/pastas` (list, get, delete, patch, like, unlike)
+- Registers routes: `POST /api/convert`, `GET /api/health`, `GET /api/gallery`, `/api/pastas` (list, get, delete, patch, like, unlike), `GET /api/pastas/{id}/preview.png`
 - Reads `PORT` from environment (default: 8080)
 - Connects to PostgreSQL via `DATABASE_URL` (graceful degradation if unset/unavailable)
-- Passes `Store` to handlers via functional options
+- Initializes preview renderer from `FONT_PATH` (degrades gracefully if font not found — og:image omitted)
+- Passes `Store` and `Renderer` to handlers via functional options
 
 ### Converter: `backend/internal/converter/converter.go`
 The core ASCII art engine — produces high-quality output using adaptive image processing.
@@ -156,6 +157,21 @@ Global middleware chain (in order):
 ### InstrumentedStore: `backend/internal/store/instrumented.go`
 - Decorator wrapping any `Store` implementation to record `db_operation_duration_seconds`
 - Exposes `Ping()` via type assertion on inner store (returns `ErrPingNotSupported` if inner lacks it)
+
+### Preview: `backend/internal/preview/`
+- Renders ASCII/Braille art as 1200×630 PNG (OG image standard dimensions)
+- Uses DejaVu Sans Mono font loaded from disk at startup
+- Font search paths: `FONT_PATH` env var (if set), then defaults (`/usr/share/fonts/dejavu/DejaVuSansMono.ttf`, Debian/Arch variants)
+- Auto-sizes font to fit content within padding bounds (min 3px, max 20px)
+- Dark theme: background #181820, text #C8C8D2, "Copy-Pasta" brand accent #FF6B9D
+- Endpoint: `GET /api/pastas/{id}/preview.png` — returns PNG with 24h `Cache-Control`
+- **Graceful degradation**: If font not found at startup, renderer is nil; `og:image` tags are omitted and preview endpoint returns 503
+
+**Environment variable:**
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `FONT_PATH` | No | (system search) | Absolute path to a TTF/OTF mono font for preview rendering |
 
 ### Store: `backend/internal/store/`
 - `Store` interface: `Save`, `Get`, `ListBySession`, `ListPublic`, `DeleteByOwner`, `SetPublicByOwner`, `LikePasta`, `UnlikePasta`, `GetLikeCount`, `IsPublicPasta`, `Close`

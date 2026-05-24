@@ -634,9 +634,14 @@
   overflow: hidden;
   background: var(--panel-soft);
   border: none;
+  border-radius: 24px 24px 0 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
 }
 
 .gallery-card-preview:focus-visible {
@@ -843,6 +848,7 @@
   flex-direction: column;
   overflow: hidden;
   animation: modal-slide-up 0.2s ease;
+  outline: none;
 }
 
 @keyframes modal-slide-up {

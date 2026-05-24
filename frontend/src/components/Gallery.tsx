@@ -4,14 +4,17 @@ import { listGallery, likePasta, unlikePasta, type GalleryPasta } from '../api/g
 const PAGE_SIZE = 20;
 
 function relativeTime(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return 'Unknown';
+  const diff = Date.now() - date.getTime();
+  if (diff < 0) return 'just now';
   const mins = Math.floor(diff / 60000);
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
   if (days < 30) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+  return date.toLocaleDateString();
 }
 
 export function Gallery() {
@@ -75,6 +78,7 @@ export function Gallery() {
     if (loadingRef.current) return;
     loadingRef.current = true;
     setLoading(true);
+    setError(null);
     try {
       const newOffset = offset + PAGE_SIZE;
       const items = await listGallery(PAGE_SIZE, newOffset);
@@ -97,14 +101,21 @@ export function Gallery() {
     if (e.target === e.currentTarget) setSelectedPasta(null);
   }, []);
 
-  // Close modal on Escape
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Modal: Escape to close, scroll lock, focus management
   useEffect(() => {
     if (!selectedPasta) return;
+    document.body.style.overflow = 'hidden';
+    modalRef.current?.focus();
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setSelectedPasta(null);
     };
     document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    return () => {
+      document.removeEventListener('keydown', handler);
+      document.body.style.overflow = '';
+    };
   }, [selectedPasta]);
 
   // Get truncated lines for preview
@@ -133,19 +144,17 @@ export function Gallery() {
       <div className="gallery-grid">
         {pastas.map(pasta => (
           <article key={pasta.id} className="gallery-card">
-            <div
+            <button
+              type="button"
               className="gallery-card-preview"
               onClick={() => setSelectedPasta(pasta)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedPasta(pasta); }}
               aria-label="View full ASCII art"
             >
               <pre className="gallery-card-ascii">
                 {getPreviewLines(pasta.ascii_art)}
               </pre>
               <div className="gallery-card-fade" />
-            </div>
+            </button>
 
             <div className="gallery-card-footer">
               <div className="gallery-card-meta">
@@ -190,16 +199,16 @@ export function Gallery() {
         ))}
       </div>
 
-      {hasMore && !loading && !error && pastas.length > 0 && (
+      {hasMore && !loading && pastas.length > 0 && (
         <button type="button" className="gallery-load-more" onClick={handleLoadMore}>
-          Load more
+          {error ? 'Retry' : 'Load more'}
         </button>
       )}
 
       {/* Modal overlay for full art view */}
       {selectedPasta && (
-        <div className="gallery-modal-backdrop" onClick={handleModalClose} role="dialog" aria-modal="true" aria-label="Full ASCII art view">
-          <div className="gallery-modal">
+        <div className="gallery-modal-backdrop" onClick={handleModalClose}>
+          <div className="gallery-modal" ref={modalRef} role="dialog" aria-modal="true" aria-label="Full ASCII art view" tabIndex={-1}>
             <div className="gallery-modal-header">
               <div className="gallery-modal-meta">
                 <span className="gallery-card-mode-badge">

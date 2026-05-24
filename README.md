@@ -11,6 +11,9 @@ A fun web app that converts meme images into ASCII art that you can copy-paste a
 ### App in Action
 ![Copy-Pasta App](docs/screenshots/app-in-action.png)
 
+### Community Gallery
+![Community Gallery](docs/screenshots/gallery.png)
+
 ### Grafana Observability Dashboard
 ![Grafana Dashboard - Request Rate & Latency](docs/screenshots/grafana-dashboard.png)
 ![Grafana Dashboard - Conversions & DB Ops](docs/screenshots/grafana-dashboard-2.png)

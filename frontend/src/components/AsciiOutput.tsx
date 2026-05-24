@@ -16,8 +16,12 @@ export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic 
   const [publishing, setPublishing] = useState(false);
   const publishingRef = useRef(false);
   const [publishError, setPublishError] = useState('');
+  const [errorIsPublicSnapshot, setErrorIsPublicSnapshot] = useState(isPublic);
   const preRef = useRef<HTMLPreElement>(null);
   const [hasOverflowX, setHasOverflowX] = useState(false);
+
+  // Error is stale if isPublic changed since the error was set
+  const showPublishError = publishError && errorIsPublicSnapshot === isPublic;
 
   useEffect(() => {
     if (!copied) return;
@@ -71,6 +75,7 @@ export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic 
       await onTogglePublic(pastaId, !isPublic);
     } catch {
       setPublishError('Failed to update visibility');
+      setErrorIsPublicSnapshot(isPublic);
     } finally {
       publishingRef.current = false;
       setPublishing(false);
@@ -120,7 +125,7 @@ export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic 
               {publishing ? '⏳ Updating…' : isPublic ? '🌐 Published' : '📤 Publish'}
             </button>
           )}
-          {publishError && <span className="publish-error" role="alert">{publishError}</span>}
+          {showPublishError && <span className="publish-error" role="alert">{publishError}</span>}
         </div>
       )}
     </section>

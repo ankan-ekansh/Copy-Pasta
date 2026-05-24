@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { convertImage, type ConvertResponse, type ConvertMode } from './api/convert';
 import { setPublic } from './api/pastas';
 import { AsciiOutput } from './components/AsciiOutput';
@@ -34,6 +34,7 @@ function App() {
   const [mode, setMode] = useState<ConvertMode>('braille');
   const [result, setResult] = useState<ConvertResponse | null>(null);
   const [isPublic, setIsPublic] = useState(false);
+  const resultIdRef = useRef<string | undefined>(undefined);
   const [error, setError] = useState('');
   const [isConverting, setIsConverting] = useState(false);
   const [historyRefresh, setHistoryRefresh] = useState(0);
@@ -70,10 +71,12 @@ function App() {
         mode,
       });
       setResult(response);
+      resultIdRef.current = response.id;
       setIsPublic(false);
       setHistoryRefresh((n) => n + 1);
     } catch (conversionError) {
       setResult(null);
+      resultIdRef.current = undefined;
       setError(
         conversionError instanceof Error
           ? conversionError.message
@@ -87,8 +90,8 @@ function App() {
   const handleTogglePublic = async (id: string, newValue: boolean) => {
     try {
       await setPublic(id, newValue);
-      // Only update if the current result still matches
-      if (id === result?.id) {
+      // Only update if the current result still matches (ref avoids stale closure)
+      if (id === resultIdRef.current) {
         setIsPublic(newValue);
       }
       setHistoryRefresh((n) => n + 1);
@@ -276,6 +279,7 @@ function App() {
           {result ? (
             <>
               <AsciiOutput
+                key={result.id ?? 'no-id'}
                 ascii={result.ascii}
                 width={result.width}
                 height={result.height}

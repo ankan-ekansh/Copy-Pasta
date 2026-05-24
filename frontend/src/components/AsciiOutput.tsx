@@ -111,10 +111,10 @@ export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic 
               onClick={handleTogglePublic}
               disabled={publishing}
               aria-pressed={isPublic}
-              aria-label={publishing ? 'Publishing to gallery' : isPublic ? 'Published to gallery' : 'Publish to gallery'}
-              title={isPublic ? 'Published to gallery' : 'Publish to gallery'}
+              aria-label={publishing ? 'Updating gallery visibility' : isPublic ? 'Unpublish from gallery' : 'Publish to gallery'}
+              title={isPublic ? 'Unpublish from gallery' : 'Publish to gallery'}
             >
-              {publishing ? '⏳ Publishing…' : isPublic ? '🌐 Published' : '📤 Publish'}
+              {publishing ? '⏳ Updating…' : isPublic ? '🌐 Published' : '📤 Publish'}
             </button>
           )}
           {publishError && <span className="publish-error" role="alert">{publishError}</span>}

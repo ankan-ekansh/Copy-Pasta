@@ -8,13 +8,12 @@ import (
 	"testing"
 )
 
-// testRenderer creates a Renderer from the first available system font.
-// Returns nil if no font is available (e.g., CI without fonts installed).
+// testRenderer creates a Renderer using the bundled test font (Go Mono, BSD license).
 func testRenderer(t *testing.T) *Renderer {
 	t.Helper()
-	r, err := NewRenderer("")
+	r, err := NewRenderer("testdata/Go-Mono.ttf")
 	if err != nil {
-		t.Skip("skipping: no font available on this system")
+		t.Fatalf("failed to create test renderer: %v", err)
 	}
 	return r
 }
@@ -104,9 +103,9 @@ func TestRender_ImageDimensions(t *testing.T) {
 
 func TestNewRenderer_NoFontsAvailable(t *testing.T) {
 	// Save and restore default paths
-	origPaths := DefaultFontPaths
-	DefaultFontPaths = []string{"/nonexistent/a.ttf", "/nonexistent/b.ttf"}
-	defer func() { DefaultFontPaths = origPaths }()
+	origPaths := defaultFontPaths
+	defaultFontPaths = []string{"/nonexistent/a.ttf", "/nonexistent/b.ttf"}
+	defer func() { defaultFontPaths = origPaths }()
 
 	_, err := NewRenderer("/also/nonexistent/font.ttf")
 	if err == nil {

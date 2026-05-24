@@ -29,15 +29,15 @@ var (
 	brandColor = color.RGBA{255, 107, 157, 255}
 )
 
-// DefaultFontPaths lists common locations for DejaVu Sans Mono.
-var DefaultFontPaths = []string{
+// defaultFontPaths lists common locations for DejaVu Sans Mono.
+var defaultFontPaths = []string{
 	"/usr/share/fonts/dejavu/DejaVuSansMono.ttf",           // Alpine
 	"/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",  // Debian/Ubuntu
 	"/usr/share/fonts/TTF/DejaVuSansMono.ttf",              // Arch
 }
 
 func findFont(extraPath string) ([]byte, error) {
-	paths := DefaultFontPaths
+	paths := defaultFontPaths
 	if extraPath != "" {
 		paths = append([]string{extraPath}, paths...)
 	}

@@ -360,7 +360,7 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 
 **Problem**: The "publish to gallery" toggle is buried in the History panel at the bottom of the page. Users must scroll past the ASCII output to make their pasta public — bad UX since the publish decision happens right after seeing the result.
 
-**Solution**: Add a publish/unpublish button directly in the `AsciiOutput` share row, next to the copy link button. Uses `publishingRef` (useRef<Set>) for synchronous double-click prevention, returns `Promise<boolean>` so callers know if the toggle actually executed.
+**Solution**: Add a publish/unpublish button directly in the `AsciiOutput` share row, next to the copy link button. Uses `publishingRef` (`useRef<Set<string>>`) for synchronous double-click prevention, returns `Promise<boolean>` so callers know if the toggle actually executed.
 
 | Task | Status |
 |------|--------|

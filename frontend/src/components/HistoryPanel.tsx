@@ -6,6 +6,7 @@ interface HistoryPanelProps {
   refreshTrigger?: number;
   onTogglePublic?: (id: string, newValue: boolean) => Promise<boolean>;
   publishingIds?: Set<string>;
+  onDelete?: (id: string) => void;
 }
 
 type State = { pastas: Pasta[]; loading: boolean; error: string; deleteError: string; publishError: string };
@@ -33,7 +34,7 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-export function HistoryPanel({ refreshTrigger, onTogglePublic, publishingIds: externalPublishingIds }: HistoryPanelProps) {
+export function HistoryPanel({ refreshTrigger, onTogglePublic, publishingIds: externalPublishingIds, onDelete }: HistoryPanelProps) {
   const [state, dispatch] = useReducer(reducer, { pastas: [], loading: true, error: '', deleteError: '', publishError: '' });
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export function HistoryPanel({ refreshTrigger, onTogglePublic, publishingIds: ex
       dispatch({ type: 'clear-errors' });
       await deletePasta(id);
       dispatch({ type: 'remove', id });
+      onDelete?.(id);
     } catch (err) {
       dispatch({ type: 'delete-error', message: err instanceof Error ? err.message : 'Delete failed' });
     }

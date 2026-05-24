@@ -111,6 +111,14 @@ function App() {
     }
   };
 
+  const handleHistoryDelete = (id: string) => {
+    if (id === resultIdRef.current) {
+      setResult(null);
+      setIsPublic(false);
+      resultIdRef.current = undefined;
+    }
+  };
+
   return (
     <div className="app-shell">
       <header className="hero-panel">
@@ -316,7 +324,7 @@ function App() {
         </div>
 
         <div className="history-column">
-          <HistoryPanel refreshTrigger={historyRefresh} onTogglePublic={handleTogglePublic} publishingIds={publishingIds} />
+          <HistoryPanel refreshTrigger={historyRefresh} onTogglePublic={handleTogglePublic} publishingIds={publishingIds} onDelete={handleHistoryDelete} />
         </div>
       </main>
       )}

@@ -37,16 +37,17 @@ export function AsciiOutput({ ascii, width, height, shareUrl }: AsciiOutputProps
   }, [ascii]);
 
   const handleCopy = async () => {
+    if (!navigator.clipboard?.writeText) return;
     try {
-      await navigator.clipboard?.writeText(ascii);
+      await navigator.clipboard.writeText(ascii);
       setCopied(true);
     } catch { /* clipboard unavailable */ }
   };
 
   const handleCopyLink = async () => {
-    if (!shareUrl) return;
+    if (!shareUrl || !navigator.clipboard?.writeText) return;
     try {
-      await navigator.clipboard?.writeText(shareUrl);
+      await navigator.clipboard.writeText(shareUrl);
       setLinkCopied(true);
     } catch { /* clipboard unavailable */ }
   };

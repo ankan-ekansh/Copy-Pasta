@@ -551,6 +551,23 @@
   flex-shrink: 0;
 }
 
+.publish-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.publish-btn-active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  border-color: transparent;
+}
+
+.publish-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .share-link-input {
   flex: 1;
   padding: 0.5rem 0.75rem;

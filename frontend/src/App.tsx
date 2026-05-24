@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { convertImage, type ConvertResponse, type ConvertMode } from './api/convert';
+import { setPublic } from './api/pastas';
 import { AsciiOutput } from './components/AsciiOutput';
 import { ImageUploader } from './components/ImageUploader';
 import { HistoryPanel } from './components/HistoryPanel';
@@ -32,6 +33,7 @@ function App() {
   const [invert, setInvert] = useState(false);
   const [mode, setMode] = useState<ConvertMode>('braille');
   const [result, setResult] = useState<ConvertResponse | null>(null);
+  const [isPublic, setIsPublic] = useState(false);
   const [error, setError] = useState('');
   const [isConverting, setIsConverting] = useState(false);
   const [historyRefresh, setHistoryRefresh] = useState(0);
@@ -68,6 +70,7 @@ function App() {
         mode,
       });
       setResult(response);
+      setIsPublic(false);
       setHistoryRefresh((n) => n + 1);
     } catch (conversionError) {
       setResult(null);
@@ -79,6 +82,12 @@ function App() {
     } finally {
       setIsConverting(false);
     }
+  };
+
+  const handleTogglePublic = async (id: string, newValue: boolean) => {
+    await setPublic(id, newValue);
+    setIsPublic(newValue);
+    setHistoryRefresh((n) => n + 1);
   };
 
   return (
@@ -259,7 +268,15 @@ function App() {
 
           {result ? (
             <>
-              <AsciiOutput ascii={result.ascii} width={result.width} height={result.height} shareUrl={shareUrl} />
+              <AsciiOutput
+                ascii={result.ascii}
+                width={result.width}
+                height={result.height}
+                shareUrl={shareUrl}
+                pastaId={result.id}
+                isPublic={isPublic}
+                onTogglePublic={handleTogglePublic}
+              />
             </>
           ) : (
             !isConverting && (

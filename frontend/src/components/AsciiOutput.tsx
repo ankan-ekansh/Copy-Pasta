@@ -5,11 +5,15 @@ interface AsciiOutputProps {
   width: number;
   height: number;
   shareUrl?: string | null;
+  pastaId?: string | null;
+  isPublic?: boolean;
+  onTogglePublic?: (id: string, newValue: boolean) => Promise<void>;
 }
 
-export function AsciiOutput({ ascii, width, height, shareUrl }: AsciiOutputProps) {
+export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic = false, onTogglePublic }: AsciiOutputProps) {
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const preRef = useRef<HTMLPreElement>(null);
   const [hasOverflowX, setHasOverflowX] = useState(false);
 
@@ -56,6 +60,16 @@ export function AsciiOutput({ ascii, width, height, shareUrl }: AsciiOutputProps
     } catch { /* clipboard unavailable */ }
   };
 
+  const handleTogglePublic = async () => {
+    if (!pastaId || !onTogglePublic || publishing) return;
+    setPublishing(true);
+    try {
+      await onTogglePublic(pastaId, !isPublic);
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   return (
     <section className="ascii-card">
       <div className="ascii-header">
@@ -86,6 +100,18 @@ export function AsciiOutput({ ascii, width, height, shareUrl }: AsciiOutputProps
           <button type="button" className="secondary-button share-copy-btn" onClick={handleCopyLink}>
             {linkCopied ? 'Copied!' : '📋 Copy link'}
           </button>
+          {pastaId && onTogglePublic && (
+            <button
+              type="button"
+              className={`secondary-button publish-btn ${isPublic ? 'publish-btn-active' : ''}`}
+              onClick={handleTogglePublic}
+              disabled={publishing}
+              aria-pressed={isPublic}
+              title={isPublic ? 'Published to gallery' : 'Publish to gallery'}
+            >
+              {publishing ? '⏳' : isPublic ? '🌐 Published' : '📤 Publish'}
+            </button>
+          )}
         </div>
       )}
     </section>

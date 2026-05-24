@@ -812,6 +812,21 @@
   padding: 0.85rem 1.25rem;
   margin-bottom: 1.5rem;
   color: #fca5a5;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.gallery-retry-btn {
+  background: var(--panel-soft);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 0.4rem 1rem;
+  color: var(--text-strong);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  white-space: nowrap;
 }
 
 :root[data-theme='light'] .gallery-error {
@@ -848,7 +863,11 @@
   flex-direction: column;
   overflow: hidden;
   animation: modal-slide-up 0.2s ease;
-  outline: none;
+}
+
+.gallery-modal:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 @keyframes modal-slide-up {

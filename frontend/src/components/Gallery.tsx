@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, type MouseEvent } from 'react';
 import { listGallery, likePasta, unlikePasta, type GalleryPasta } from '../api/gallery';
 
 const PAGE_SIZE = 20;
@@ -26,22 +26,34 @@ export function Gallery() {
   const [hasMore, setHasMore] = useState(true);
   const loadingRef = useRef(false);
 
+  const loadInitialRef = useRef(false);
+
   useEffect(() => {
-    let ignore = false;
+    if (loadInitialRef.current) return;
+    loadInitialRef.current = true;
     listGallery(PAGE_SIZE, 0).then(items => {
-      if (!ignore) {
-        setPastas(items);
-        setHasMore(items.length === PAGE_SIZE);
-        setLoading(false);
-      }
+      setPastas(items);
+      setHasMore(items.length === PAGE_SIZE);
+      setLoading(false);
     }).catch(err => {
-      if (!ignore) {
-        setError(err instanceof Error ? err.message : 'Failed to load gallery');
-        setLoading(false);
-      }
+      setError(err instanceof Error ? err.message : 'Failed to load gallery');
+      setLoading(false);
     });
-    return () => { ignore = true; };
   }, []);
+
+  const retryInitialLoad = () => {
+    setLoading(true);
+    setError(null);
+    listGallery(PAGE_SIZE, 0).then(items => {
+      setPastas(items);
+      setHasMore(items.length === PAGE_SIZE);
+      setOffset(0);
+      setLoading(false);
+    }).catch(err => {
+      setError(err instanceof Error ? err.message : 'Failed to load gallery');
+      setLoading(false);
+    });
+  };
 
   const [likingIds, setLikingIds] = useState<Set<string>>(new Set());
   const likingRef = useRef<Set<string>>(new Set());
@@ -97,32 +109,40 @@ export function Gallery() {
     navigator.clipboard?.writeText(text)?.catch(() => {});
   };
 
-  const handleModalClose = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const handleModalClose = useCallback((e: MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) setSelectedPasta(null);
   }, []);
 
   const modalRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   // Modal: Escape to close, scroll lock, focus management
   useEffect(() => {
     if (!selectedPasta) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    modalRef.current?.focus();
+    closeButtonRef.current?.focus();
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setSelectedPasta(null);
     };
     document.addEventListener('keydown', handler);
     return () => {
       document.removeEventListener('keydown', handler);
-      document.body.style.overflow = '';
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
     };
   }, [selectedPasta]);
 
-  // Get truncated lines for preview
-  const getPreviewLines = (art: string, maxLines: number = 30) => {
-    const lines = art.split('\n');
-    return lines.slice(0, maxLines).join('\n');
-  };
+  // Precompute preview lines to avoid splitting on every render
+  const previewMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const pasta of pastas) {
+      const lines = pasta.ascii_art.split('\n');
+      map.set(pasta.id, lines.slice(0, 30).join('\n'));
+    }
+    return map;
+  }, [pastas]);
 
   return (
     <div className="gallery">
@@ -131,7 +151,14 @@ export function Gallery() {
         <p className="gallery-subtitle">ASCII masterpieces from the community — click any to view full art</p>
       </div>
 
-      {error && <div className="gallery-error">⚠️ {error}</div>}
+      {error && (
+        <div className="gallery-error">
+          <span>⚠️ {error}</span>
+          {pastas.length === 0 && (
+            <button type="button" className="gallery-retry-btn" onClick={retryInitialLoad}>Retry</button>
+          )}
+        </div>
+      )}
 
       {pastas.length === 0 && !loading && !error && (
         <div className="gallery-empty">
@@ -151,7 +178,7 @@ export function Gallery() {
               aria-label="View full ASCII art"
             >
               <pre className="gallery-card-ascii">
-                {getPreviewLines(pasta.ascii_art)}
+                {previewMap.get(pasta.id)}
               </pre>
               <div className="gallery-card-fade" />
             </button>
@@ -239,6 +266,7 @@ export function Gallery() {
                   className="gallery-modal-close"
                   onClick={() => setSelectedPasta(null)}
                   aria-label="Close"
+                  ref={closeButtonRef}
                 >
                   ✕
                 </button>

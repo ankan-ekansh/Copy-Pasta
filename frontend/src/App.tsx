@@ -35,6 +35,7 @@ function App() {
   const [result, setResult] = useState<ConvertResponse | null>(null);
   const [isPublic, setIsPublic] = useState(false);
   const resultIdRef = useRef<string | undefined>(undefined);
+  const [conversionCount, setConversionCount] = useState(0);
   const [error, setError] = useState('');
   const [isConverting, setIsConverting] = useState(false);
   const [historyRefresh, setHistoryRefresh] = useState(0);
@@ -73,6 +74,7 @@ function App() {
       setResult(response);
       resultIdRef.current = response.id;
       setIsPublic(false);
+      setConversionCount((n) => n + 1);
       setHistoryRefresh((n) => n + 1);
     } catch (conversionError) {
       setResult(null);
@@ -97,6 +99,12 @@ function App() {
       setHistoryRefresh((n) => n + 1);
     } catch {
       throw new Error('Failed to update visibility');
+    }
+  };
+
+  const handleHistoryPublicToggled = (id: string, newValue: boolean) => {
+    if (id === resultIdRef.current) {
+      setIsPublic(newValue);
     }
   };
 
@@ -279,7 +287,7 @@ function App() {
           {result ? (
             <>
               <AsciiOutput
-                key={result.id ?? 'no-id'}
+                key={conversionCount}
                 ascii={result.ascii}
                 width={result.width}
                 height={result.height}
@@ -304,7 +312,7 @@ function App() {
         </div>
 
         <div className="history-column">
-          <HistoryPanel refreshTrigger={historyRefresh} />
+          <HistoryPanel refreshTrigger={historyRefresh} onPublicToggled={handleHistoryPublicToggled} />
         </div>
       </main>
       )}

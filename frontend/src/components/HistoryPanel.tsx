@@ -4,6 +4,7 @@ import { listPastas, deletePasta, setPublic, type Pasta } from '../api/pastas';
 
 interface HistoryPanelProps {
   refreshTrigger?: number;
+  onPublicToggled?: (id: string, isPublic: boolean) => void;
 }
 
 type State = { pastas: Pasta[]; loading: boolean; error: string; deleteError: string; publishError: string };
@@ -31,7 +32,7 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
+export function HistoryPanel({ refreshTrigger, onPublicToggled }: HistoryPanelProps) {
   const [state, dispatch] = useReducer(reducer, { pastas: [], loading: true, error: '', deleteError: '', publishError: '' });
   const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set());
   const publishingRef = useRef<Set<string>>(new Set());
@@ -68,6 +69,7 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
     try {
       await setPublic(id, !currentlyPublic);
       dispatch({ type: 'toggle-public', id, isPublic: !currentlyPublic });
+      onPublicToggled?.(id, !currentlyPublic);
     } catch {
       dispatch({ type: 'publish-error', message: 'Failed to update visibility' });
     } finally {

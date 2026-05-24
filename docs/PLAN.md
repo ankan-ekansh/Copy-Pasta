@@ -365,7 +365,7 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 | Task | Status |
 |------|--------|
 | Add `pastaId`, `isPublic`, `onTogglePublic` props to `AsciiOutput` | ✅ |
-| Render publish toggle button in share row (📤 Publish / 🌐 Published ✓) | ✅ |
+| Render publish toggle button in share row (📤 Publish / 🌐 Published) | ✅ |
 | Pessimistic UI with disabled state during API call, error display on failure | ✅ |
 | Style published state with accent highlight | ✅ |
 | Keep HistoryPanel toggle unchanged (for managing older pastas) | ✅ |

@@ -220,7 +220,7 @@ Global middleware chain (in order):
 ### nginx Config (`frontend/nginx.conf`)
 - `client_max_body_size 20m` — allows uploads up to 20MB (matches backend's `MaxBytesReader` limit)
 - `try_files $uri $uri/ /index.html` — SPA fallback for client-side routing
-- Proxies `/api/` to backend service (backend handles `/metrics` directly — not proxied via nginx)
+- Proxies `/api` to backend service (backend handles `/metrics` directly — not proxied via nginx)
 
 ### State Management Patterns
 

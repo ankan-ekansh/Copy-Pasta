@@ -226,7 +226,7 @@ Global middleware chain (in order):
 
 **Publish toggle coordination (`App.tsx`):**
 - `publishingRef` (`useRef<Set<string>>`) provides synchronous double-click prevention — React state is async and can't guard against rapid clicks
-- `handleTogglePublic` returns `Promise<boolean>` — `false` when guarded (no-op), `true` when API call executed
+- `handleTogglePublic` returns `Promise<boolean>` — resolves to `false` when guarded (no-op), `true` when API call succeeds, or rejects (throws) on API failure
 - HistoryPanel checks the return value before dispatching its local state update; AsciiOutput receives `isPublic` as a prop from App (updated after API resolves)
 - UI is pessimistic: button shows disabled/loading state during API call, updates only after success
 - After successful toggle, bumps `historyRefresh` counter to sync HistoryPanel with server state

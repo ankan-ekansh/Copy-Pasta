@@ -41,7 +41,7 @@ Copy-Pasta converts meme images into ASCII/Braille art. The stack:
 | CTE pagination for gallery | Separates row selection from aggregation; cleaner query, predictable performance |
 | Transactional unpublish | Atomic unpublish + clear likes reduces the window for stale likes on non-public pastas (concurrent like/unpublish can still race under MVCC) |
 | SQL-gated like insert | `INSERT...SELECT WHERE is_public=TRUE` — prevents liking non-public pastas within a single statement (not a cross-transaction guarantee) |
-| useRef for in-flight guards | Synchronous check prevents double-clicks without waiting for React re-render. `publishingRef` (Set of pasta IDs) gates toggle; `handleTogglePublic` resolves to a boolean so callers know if action executed. |
+| useRef for in-flight guards | Synchronous check prevents double-clicks without waiting for React re-render. `publishingRef` (Set of pasta IDs) gates toggle; `handleTogglePublic` resolves to `false` (guarded no-op) or `true` (call performed), and rejects on API failure. |
 
 ---
 

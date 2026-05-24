@@ -306,7 +306,7 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 ---
 
 ## Phase 5.5: UI/UX Overhaul — "Make It Beautiful"
-**Status**: In progress  
+**Status**: Complete  
 **Goal**: Refine the entire frontend for visual consistency, usability, and polish.
 
 ### Problems Identified
@@ -343,19 +343,18 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 
 | Task | Status |
 |------|--------|
-| Fix image preview cropping (`object-fit: contain`, remove static max-height cap) | ⬜ |
-| Restyle "Recent Pastas" as proper cards (not dense table rows) | ⬜ |
-| Add horizontal scroll indicator to ASCII output panel | ⬜ |
-| Make Conversion Settings collapsible (accordion, collapsed by default after first use) | ⬜ |
-| Move Share section into ASCII output card (integrated, not separate) | ⬜ |
-| History panel polish (hover effects, toggle switch for publish) | ⬜ |
-| Quick share presets — improve readability (larger text, better contrast) | ⬜ |
+| Fix image preview cropping (`object-fit: contain`, increase max-height to 400px) | ✅ |
+| Restyle "Recent Pastas" as proper cards (not dense table rows) | ✅ |
+| Add horizontal scroll indicator to ASCII output panel | ✅ |
+| Make Conversion Settings collapsible (accordion, state persisted via localStorage) | ✅ |
+| Move Share section into ASCII output card (integrated, not separate) | ✅ |
+| History panel polish (hover effects, toggle switch for publish) | ✅ |
+| Quick share presets — improve readability (larger text, better contrast) | ✅ |
 
-### Files to Change
-- `frontend/src/App.css` — bulk of styling fixes
-- `frontend/src/index.css` — add missing CSS vars if needed
-- `frontend/src/components/Gallery.tsx` — restructure preview, add modal
-- `frontend/src/App.tsx` — navigation restructure, collapsible settings, share integration
+### Files Changed
+- `frontend/src/App.css` — collapsible controls, history card hover, preset chips, scroll indicator, share integration
+- `frontend/src/App.tsx` — collapsible settings state (persisted), share card removed (moved into AsciiOutput)
+- `frontend/src/components/AsciiOutput.tsx` — scroll overflow detection, integrated share row
 
 ---
 

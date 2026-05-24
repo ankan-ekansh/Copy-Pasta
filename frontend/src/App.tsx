@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { convertImage, type ConvertResponse, type ConvertMode } from './api/convert';
 import { AsciiOutput } from './components/AsciiOutput';
 import { ImageUploader } from './components/ImageUploader';
@@ -36,6 +36,18 @@ function App() {
   const [isConverting, setIsConverting] = useState(false);
   const [historyRefresh, setHistoryRefresh] = useState(0);
   const [view, setView] = useState<'app' | 'gallery'>('app');
+  const [settingsOpen, setSettingsOpen] = useState(() => {
+    const saved = localStorage.getItem('copy-pasta-settings-open');
+    return saved === null ? true : saved === 'true';
+  });
+
+  const toggleSettings = () => {
+    setSettingsOpen(prev => !prev);
+  };
+
+  useEffect(() => {
+    localStorage.setItem('copy-pasta-settings-open', String(settingsOpen));
+  }, [settingsOpen]);
 
   const shareUrl = result?.id
     ? `${window.location.origin}/pasta/${encodeURIComponent(result.id)}`
@@ -121,13 +133,25 @@ function App() {
           />
 
           <section className="controls-card">
-            <div className="controls-header">
+            <button
+              type="button"
+              className="controls-header controls-toggle"
+              onClick={toggleSettings}
+              aria-expanded={settingsOpen}
+              aria-controls="controls-panel"
+            >
               <div>
                 <p className="eyebrow">Season to taste</p>
-                <h2>Conversion settings</h2>
+                <h2 id="controls-heading">Conversion settings</h2>
               </div>
-              <span className="width-pill">{width} chars wide</span>
-            </div>
+              <div className="controls-header-right">
+                <span className="width-pill">{width} chars wide</span>
+                <span className={`controls-chevron ${settingsOpen ? 'open' : ''}`}>▾</span>
+              </div>
+            </button>
+
+            <div id="controls-panel" role="region" aria-labelledby="controls-heading" className={`controls-body ${settingsOpen ? 'open' : ''}`} {...(!settingsOpen && { inert: '' })}>
+            <div className="controls-body-inner">
 
             <label className="range-control" htmlFor="width">
               <span>Output width</span>
@@ -219,6 +243,8 @@ function App() {
             </p>
 
             {error && <p className="error-banner">⚠️ {error}</p>}
+            </div>
+            </div>
           </section>
         </div>
 
@@ -233,28 +259,7 @@ function App() {
 
           {result ? (
             <>
-              <AsciiOutput ascii={result.ascii} width={result.width} height={result.height} />
-              {shareUrl && (
-                <section className="share-card">
-                  <p className="eyebrow">🔗 Share this pasta</p>
-                  <div className="share-link-row">
-                    <input
-                      type="text"
-                      readOnly
-                      aria-label="Shareable pasta link"
-                      value={shareUrl}
-                      className="share-link-input"
-                    />
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={() => { navigator.clipboard?.writeText(shareUrl)?.catch(() => {}); }}
-                    >
-                      📋 Copy link
-                    </button>
-                  </div>
-                </section>
-              )}
+              <AsciiOutput ascii={result.ascii} width={result.width} height={result.height} shareUrl={shareUrl} />
             </>
           ) : (
             !isConverting && (

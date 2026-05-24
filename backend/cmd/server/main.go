@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/subtle"
+	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -88,7 +90,12 @@ func main() {
 	}
 	if info, err := os.Stat(staticDir); err == nil && info.IsDir() {
 		slog.Info("serving static files", "dir", staticDir)
-		spaHandler := spaFileServer(os.DirFS(staticDir))
+		root := os.DirFS(staticDir)
+		spaHandler := spaFileServer(root)
+
+		// Serve /pasta/:id with OG meta tags injected
+		r.Get("/pasta/{id}", ogMetaHandler(root, s))
+
 		r.NotFound(spaHandler)
 	}
 
@@ -125,6 +132,75 @@ func spaFileServer(root fs.FS) http.HandlerFunc {
 		r.URL.Path = "/"
 		fileServer.ServeHTTP(w, r)
 	}
+}
+
+// ogMetaHandler serves index.html with OG meta tags injected for /pasta/:id routes.
+// Falls back to plain index.html if the pasta can't be loaded.
+func ogMetaHandler(root fs.FS, s store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		indexBytes, err := fs.ReadFile(root, "index.html")
+		if err != nil {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+
+		html := string(indexBytes)
+		id := chi.URLParam(r, "id")
+
+		if id != "" && s != nil {
+			ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+			defer cancel()
+
+			pasta, err := s.Get(ctx, id)
+			if err == nil {
+				ogTags := buildOGMetaTags(pasta, r)
+				html = strings.Replace(html, "</head>", ogTags+"</head>", 1)
+			} else if !errors.Is(err, store.ErrNotFound) {
+				slog.Warn("og meta: failed to fetch pasta", "id", id, "error", err)
+			}
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(html))
+	}
+}
+
+// buildOGMetaTags generates Open Graph and Twitter Card meta tags for a pasta.
+func buildOGMetaTags(pasta *store.Pasta, r *http.Request) string {
+	scheme := "https"
+	if r.TLS == nil && !strings.Contains(r.Host, "azure") {
+		scheme = "http"
+	}
+	canonicalURL := fmt.Sprintf("%s://%s/pasta/%s", scheme, r.Host, pasta.ID)
+
+	title := "ASCII Art | Copy-Pasta"
+	description := fmt.Sprintf("%d×%d %s art — turn memes into text art!", pasta.Width, pasta.Height, pasta.Mode)
+
+	// Extract a short preview (first few lines) for description enhancement
+	lines := strings.SplitN(pasta.ASCIIArt, "\n", 4)
+	if len(lines) > 3 {
+		description += " Preview: " + lines[0]
+	}
+
+	return fmt.Sprintf(`
+    <meta property="og:title" content="%s" />
+    <meta property="og:description" content="%s" />
+    <meta property="og:url" content="%s" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Copy-Pasta" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="%s" />
+    <meta name="twitter:description" content="%s" />
+    `, title, escapeAttr(description), canonicalURL, title, escapeAttr(description))
+}
+
+// escapeAttr escapes a string for safe use in HTML attribute values.
+func escapeAttr(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, `"`, "&quot;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	return s
 }
 
 // requireBearerToken wraps a handler to require a valid Authorization: Bearer <token> header.

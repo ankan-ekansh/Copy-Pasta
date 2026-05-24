@@ -21,7 +21,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /server ./cmd/server
 
 # --- Stage 3: Production Runtime ---
 FROM alpine:3.19 AS production
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates font-dejavu
 WORKDIR /app
 
 # Copy the compiled binary

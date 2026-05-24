@@ -54,7 +54,7 @@ func main() {
 	fontPath := os.Getenv("FONT_PATH")
 	renderer, rendererErr := preview.NewRenderer(fontPath)
 	if rendererErr != nil {
-		slog.Warn("preview renderer unavailable (font not found), og:image disabled", "error", rendererErr)
+		slog.Warn("preview renderer unavailable, og:image disabled", "error", rendererErr, "FONT_PATH", fontPath)
 	}
 
 	h := handler.New(handler.WithStore(s), handler.WithRenderer(renderer))

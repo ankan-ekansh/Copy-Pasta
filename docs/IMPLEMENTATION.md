@@ -31,7 +31,7 @@
 
 ### Entry Point: `backend/cmd/server/main.go`
 - Creates Chi router with middleware (CORS, logging, recoverer, session cookies)
-- Registers routes: `POST /api/convert`, `GET /api/health`, `GET /api/gallery`, `/api/pastas` (list, get, delete, patch, like, unlike), `GET /api/pastas/{id}/preview.png`
+- Registers routes: `POST /api/convert`, `GET /api/health`, `GET /api/gallery`, `/api/pastas` (list, get, delete, patch, like, unlike), `GET /api/pastas/:id/preview.png`
 - Reads `PORT` from environment (default: 8080)
 - Connects to PostgreSQL via `DATABASE_URL` (graceful degradation if unset/unavailable)
 - Initializes preview renderer from `FONT_PATH` (degrades gracefully if font not found — og:image omitted)
@@ -164,7 +164,7 @@ Global middleware chain (in order):
 - Font search paths: `FONT_PATH` env var (if set), then defaults (`/usr/share/fonts/dejavu/DejaVuSansMono.ttf`, Debian/Arch variants)
 - Auto-sizes font to fit content within padding bounds (min 3px, max 20px)
 - Dark theme: background #181820, text #C8C8D2, "Copy-Pasta" brand accent #FF6B9D
-- Endpoint: `GET /api/pastas/{id}/preview.png` — returns PNG with 24h `Cache-Control`
+- Endpoint: `GET /api/pastas/:id/preview.png` — returns PNG with 24h `Cache-Control`
 - **Graceful degradation**: If font not found at startup, renderer is nil; `og:image` tags are omitted and preview endpoint returns 503
 
 **Environment variable:**

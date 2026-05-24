@@ -2,6 +2,7 @@
 package preview
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -9,6 +10,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"unicode/utf8"
 
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
@@ -45,7 +47,7 @@ func findFont(extraPath string) ([]byte, error) {
 			return data, nil
 		}
 	}
-	return nil, os.ErrNotExist
+	return nil, fmt.Errorf("font not found in paths: %v", paths)
 }
 
 // Renderer holds a parsed font for reuse across requests.
@@ -90,7 +92,7 @@ func (rr *Renderer) Render(w io.Writer, asciiArt string) error {
 	// Find max line width in runes
 	maxLen := 0
 	for _, line := range lines {
-		if n := len([]rune(line)); n > maxLen {
+		if n := utf8.RuneCountInString(line); n > maxLen {
 			maxLen = n
 		}
 	}

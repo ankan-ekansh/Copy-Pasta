@@ -374,6 +374,7 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 - **`pastaId` unavailable** (persistence not configured or save failed): Hide the publish button entirely. It only appears when `result.id` is present.
 - **`isPublic` source**: The `/api/convert` response doesn't include `is_public`. Default to `false` for freshly converted pastas (new pastas are always private initially). Track `isPublic` in local component state, toggled via the `setPublic` API.
 - **Session ownership**: Toggling visibility is restricted to the browser session that created the pasta (PATCH `/api/pastas/:id` uses session cookie + `SetPublicByOwner`). Only the creator's browser can toggle; others with just the share link cannot.
+- **Sync between toggles**: After a successful publish/unpublish from the share row, bump `historyRefresh` (already exists in App state) so HistoryPanel re-fetches and reflects the updated `is_public` status. This avoids lifting shared state — the source of truth remains the server.
 
 ### Files to Change
 - `frontend/src/components/AsciiOutput.tsx` — new props, publish button in share row

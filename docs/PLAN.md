@@ -306,7 +306,7 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 ---
 
 ## Phase 5.5: UI/UX Overhaul — "Make It Beautiful"
-**Status**: In Progress (Round 3 planned)  
+**Status**: Complete  
 **Goal**: Refine the entire frontend for visual consistency, usability, and polish.
 
 ### Problems Identified
@@ -356,19 +356,19 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 - `frontend/src/App.tsx` — collapsible settings state (persisted), share card removed (moved into AsciiOutput)
 - `frontend/src/components/AsciiOutput.tsx` — scroll overflow detection, integrated share row
 
-### Round 3 — Publish Toggle in Share Row
+### Round 3 — Publish Toggle in Share Row ✅
 
 **Problem**: The "publish to gallery" toggle is buried in the History panel at the bottom of the page. Users must scroll past the ASCII output to make their pasta public — bad UX since the publish decision happens right after seeing the result.
 
-**Solution**: Add a publish/unpublish button directly in the `AsciiOutput` share row, next to the copy link button.
+**Solution**: Add a publish/unpublish button directly in the `AsciiOutput` share row, next to the copy link button. Uses `publishingRef` (`useRef<Set<string>>`) for synchronous double-click prevention, returns `Promise<boolean>` so callers know if the toggle actually executed.
 
 | Task | Status |
 |------|--------|
-| Add `pastaId`, `isPublic`, `onTogglePublic` props to `AsciiOutput` | ⬜ |
-| Render publish toggle button in share row (📤 Publish / 🌐 Published ✓) | ⬜ |
-| Optimistic UI with revert on error, disabled state during API call | ⬜ |
-| Style published state with accent highlight | ⬜ |
-| Keep HistoryPanel toggle unchanged (for managing older pastas) | ⬜ |
+| Add `pastaId`, `isPublic`, `onTogglePublic` props to `AsciiOutput` | ✅ |
+| Render publish toggle button in share row (📤 Publish / 🌐 Published) | ✅ |
+| Pessimistic UI with disabled state during API call, error display on failure | ✅ |
+| Style published state with accent highlight | ✅ |
+| Keep HistoryPanel toggle unchanged (for managing older pastas) | ✅ |
 
 ### Edge Cases & Data Flow
 - **`pastaId` unavailable** (persistence not configured or save failed): Hide the publish button entirely. It only appears when `result.id` is present.

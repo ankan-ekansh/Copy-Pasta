@@ -182,11 +182,11 @@ Global middleware chain (in order):
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| App | `src/App.tsx` | Main layout, state management, conversion flow, share link |
+| App | `src/App.tsx` | Main layout, state management, conversion flow, publish coordination |
 | ImageUploader | `src/components/ImageUploader.tsx` | File input, drag-drop, paste support |
-| AsciiOutput | `src/components/AsciiOutput.tsx` | Displays result, copy button |
+| AsciiOutput | `src/components/AsciiOutput.tsx` | Displays result, copy button, share link, publish toggle |
 | HistoryPanel | `src/components/HistoryPanel.tsx` | Recent conversions list with share/view/delete/publish toggle |
-| Gallery | `src/components/Gallery.tsx` | Public gallery with like button, pagination, expand/collapse |
+| Gallery | `src/components/Gallery.tsx` | Public gallery with like button, pagination, modal view |
 | PastaView | `src/components/PastaView.tsx` | Share page (`/pasta/:id`) with read-only ASCII view |
 
 ### Routing: `src/main.tsx`
@@ -216,6 +216,31 @@ Global middleware chain (in order):
 - Proxies `/api` to `http://localhost:8080` in dev mode
 - Production: Go backend serves pre-built static files directly (no separate frontend service)
 - Docker Compose (local): nginx container proxies API to backend
+
+### nginx Config (`frontend/nginx.conf`)
+- `client_max_body_size 20m` — allows uploads up to 20MB (matches backend's `MaxBytesReader` limit)
+- `try_files $uri $uri/ /index.html` — SPA fallback for client-side routing
+- Proxies `/api` to backend service; `/metrics` is not proxied — it's only reachable within the Docker network (e.g., by Prometheus), not from the host via nginx
+
+### State Management Patterns
+
+**Publish toggle coordination (`App.tsx`):**
+- `publishingRef` (`useRef<Set<string>>`) provides synchronous double-click prevention — React state is async and can't guard against rapid clicks
+- `handleTogglePublic` returns `Promise<boolean>` — resolves to `false` when guarded (no-op), `true` when API call succeeds, or rejects (throws) on API failure
+- HistoryPanel checks the return value before dispatching its local state update; AsciiOutput receives `isPublic` as a prop from App (updated after API resolves)
+- UI is pessimistic: button shows disabled/loading state during API call, updates only after success
+- After successful toggle, bumps `historyRefresh` counter to sync HistoryPanel with server state
+
+**Delete with result clearing (`App.tsx`):**
+- `handleHistoryDelete` callback: when the deleted pasta ID matches the currently displayed result (`resultIdRef`), clears the result card, `isPublic` state, and `resultIdRef`
+- Prevents stale display of a pasta that no longer exists
+
+### Gallery Preview (`Gallery.tsx`)
+- Module-scope constants: `PAGE_SIZE`, `PREVIEW_LINES`, `CARD_CONTENT_WIDTH`, `CHAR_WIDTH_FACTOR`, `MIN_FONT_SIZE`, `MAX_FONT_SIZE`
+- Preview text uses `split('\n', PREVIEW_LINES)` — limits array allocation without slicing
+- Dynamic font-size: `CARD_CONTENT_WIDTH / (maxLineLen * CHAR_WIDTH_FACTOR)` clamped between `MIN_FONT_SIZE` and `MAX_FONT_SIZE`
+- `text-align: left` on `<pre>` with flex centering on container — prevents line-by-line centering that destroys braille grid alignment
+- Uses `DejaVu Sans Mono` for better braille glyph rendering
 
 ---
 

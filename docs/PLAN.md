@@ -373,7 +373,7 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 ### Edge Cases & Data Flow
 - **`pastaId` unavailable** (persistence not configured or save failed): Hide the publish button entirely. It only appears when `result.id` is present.
 - **`isPublic` source**: The `/api/convert` response doesn't include `is_public`. Default to `false` for freshly converted pastas (new pastas are always private initially). Track `isPublic` in local component state, toggled via the `setPublic` API.
-- **No auth**: Since there's no user auth, anyone with the page open can toggle — same as the existing HistoryPanel behavior.
+- **Session ownership**: Toggling visibility is restricted to the browser session that created the pasta (PATCH `/api/pastas/:id` uses session cookie + `SetPublicByOwner`). Only the creator's browser can toggle; others with just the share link cannot.
 
 ### Files to Change
 - `frontend/src/components/AsciiOutput.tsx` — new props, publish button in share row

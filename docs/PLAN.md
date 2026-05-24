@@ -343,19 +343,18 @@ See **[OBSERVABILITY.md](OBSERVABILITY.md)** for the detailed implementation pla
 
 | Task | Status |
 |------|--------|
-| Fix image preview cropping (`object-fit: contain`, remove static max-height cap) | ✅ |
+| Fix image preview cropping (`object-fit: contain`, increase max-height to 400px) | ✅ |
 | Restyle "Recent Pastas" as proper cards (not dense table rows) | ✅ |
 | Add horizontal scroll indicator to ASCII output panel | ✅ |
-| Make Conversion Settings collapsible (accordion, collapsed by default after first use) | ✅ |
+| Make Conversion Settings collapsible (accordion, state persisted via localStorage) | ✅ |
 | Move Share section into ASCII output card (integrated, not separate) | ✅ |
 | History panel polish (hover effects, toggle switch for publish) | ✅ |
 | Quick share presets — improve readability (larger text, better contrast) | ✅ |
 
 ### Files Changed
 - `frontend/src/App.css` — collapsible controls, history card hover, preset chips, scroll indicator, share integration
-- `frontend/src/App.tsx` — collapsible settings state, share card removed (moved into AsciiOutput)
+- `frontend/src/App.tsx` — collapsible settings state (persisted), share card removed (moved into AsciiOutput)
 - `frontend/src/components/AsciiOutput.tsx` — scroll overflow detection, integrated share row
-- `frontend/src/components/Gallery.tsx` — modal portal, focus trap, accessibility (Round 1)
 
 ---
 

@@ -36,7 +36,18 @@ function App() {
   const [isConverting, setIsConverting] = useState(false);
   const [historyRefresh, setHistoryRefresh] = useState(0);
   const [view, setView] = useState<'app' | 'gallery'>('app');
-  const [settingsOpen, setSettingsOpen] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(() => {
+    const saved = localStorage.getItem('copy-pasta-settings-open');
+    return saved === null ? true : saved === 'true';
+  });
+
+  const toggleSettings = () => {
+    setSettingsOpen(prev => {
+      const next = !prev;
+      localStorage.setItem('copy-pasta-settings-open', String(next));
+      return next;
+    });
+  };
 
   const shareUrl = result?.id
     ? `${window.location.origin}/pasta/${encodeURIComponent(result.id)}`
@@ -125,12 +136,13 @@ function App() {
             <button
               type="button"
               className="controls-header controls-toggle"
-              onClick={() => setSettingsOpen(!settingsOpen)}
+              onClick={toggleSettings}
               aria-expanded={settingsOpen}
+              aria-controls="controls-panel"
             >
               <div>
                 <p className="eyebrow">Season to taste</p>
-                <h2>Conversion settings</h2>
+                <h2 id="controls-heading">Conversion settings</h2>
               </div>
               <div className="controls-header-right">
                 <span className="width-pill">{width} chars wide</span>
@@ -138,7 +150,7 @@ function App() {
               </div>
             </button>
 
-            <div className={`controls-body ${settingsOpen ? 'open' : ''}`}>
+            <div id="controls-panel" role="region" aria-labelledby="controls-heading" className={`controls-body ${settingsOpen ? 'open' : ''}`}>
             <div className="controls-body-inner">
 
             <label className="range-control" htmlFor="width">

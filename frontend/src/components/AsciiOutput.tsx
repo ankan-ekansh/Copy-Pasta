@@ -5,11 +5,16 @@ interface AsciiOutputProps {
   width: number;
   height: number;
   shareUrl?: string | null;
+  pastaId?: string | null;
+  isPublic?: boolean;
+  publishing?: boolean;
+  onTogglePublic?: (id: string, newValue: boolean) => Promise<boolean>;
 }
 
-export function AsciiOutput({ ascii, width, height, shareUrl }: AsciiOutputProps) {
+export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic = false, publishing = false, onTogglePublic }: AsciiOutputProps) {
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [publishError, setPublishError] = useState('');
   const preRef = useRef<HTMLPreElement>(null);
   const [hasOverflowX, setHasOverflowX] = useState(false);
 
@@ -24,6 +29,12 @@ export function AsciiOutput({ ascii, width, height, shareUrl }: AsciiOutputProps
     const timeoutId = window.setTimeout(() => setLinkCopied(false), 2000);
     return () => window.clearTimeout(timeoutId);
   }, [linkCopied]);
+
+  useEffect(() => {
+    if (!publishError) return;
+    const timeoutId = window.setTimeout(() => setPublishError(''), 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [publishError]);
 
   // Detect horizontal overflow for scroll indicator
   useEffect(() => {
@@ -56,6 +67,16 @@ export function AsciiOutput({ ascii, width, height, shareUrl }: AsciiOutputProps
     } catch { /* clipboard unavailable */ }
   };
 
+  const handleTogglePublic = async () => {
+    if (!pastaId || !onTogglePublic || publishing) return;
+    setPublishError('');
+    try {
+      await onTogglePublic(pastaId, !isPublic);
+    } catch {
+      setPublishError('Failed to update visibility');
+    }
+  };
+
   return (
     <section className="ascii-card">
       <div className="ascii-header">
@@ -86,6 +107,20 @@ export function AsciiOutput({ ascii, width, height, shareUrl }: AsciiOutputProps
           <button type="button" className="secondary-button share-copy-btn" onClick={handleCopyLink}>
             {linkCopied ? 'Copied!' : '📋 Copy link'}
           </button>
+          {pastaId && onTogglePublic && (
+            <button
+              type="button"
+              className={`secondary-button publish-btn ${isPublic ? 'publish-btn-active' : ''}`}
+              onClick={handleTogglePublic}
+              disabled={publishing}
+              aria-pressed={isPublic}
+              aria-label={publishing ? 'Updating gallery visibility' : isPublic ? 'Unpublish from gallery' : 'Publish to gallery'}
+              title={isPublic ? 'Unpublish from gallery' : 'Publish to gallery'}
+            >
+              {publishing ? '⏳ Updating…' : isPublic ? '🌐 Published' : '📤 Publish'}
+            </button>
+          )}
+          {publishError && <span className="publish-error" role="alert">{publishError}</span>}
         </div>
       )}
     </section>

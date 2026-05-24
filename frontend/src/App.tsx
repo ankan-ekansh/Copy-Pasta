@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { convertImage, type ConvertResponse, type ConvertMode } from './api/convert';
+import { setPublic } from './api/pastas';
 import { AsciiOutput } from './components/AsciiOutput';
 import { ImageUploader } from './components/ImageUploader';
 import { HistoryPanel } from './components/HistoryPanel';
@@ -32,6 +33,10 @@ function App() {
   const [invert, setInvert] = useState(false);
   const [mode, setMode] = useState<ConvertMode>('braille');
   const [result, setResult] = useState<ConvertResponse | null>(null);
+  const [isPublic, setIsPublic] = useState(false);
+  const resultIdRef = useRef<string | undefined>(undefined);
+  const [conversionCount, setConversionCount] = useState(0);
+  const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState('');
   const [isConverting, setIsConverting] = useState(false);
   const [historyRefresh, setHistoryRefresh] = useState(0);
@@ -68,9 +73,13 @@ function App() {
         mode,
       });
       setResult(response);
+      resultIdRef.current = response.id;
+      setIsPublic(false);
+      setConversionCount((n) => n + 1);
       setHistoryRefresh((n) => n + 1);
     } catch (conversionError) {
       setResult(null);
+      resultIdRef.current = undefined;
       setError(
         conversionError instanceof Error
           ? conversionError.message
@@ -78,6 +87,27 @@ function App() {
       );
     } finally {
       setIsConverting(false);
+    }
+  };
+
+  const publishingRef = useRef<Set<string>>(new Set());
+
+  const handleTogglePublic = async (id: string, newValue: boolean): Promise<boolean> => {
+    if (publishingRef.current.has(id)) return false;
+    publishingRef.current.add(id);
+    setPublishingIds(new Set(publishingRef.current));
+    try {
+      await setPublic(id, newValue);
+      if (id === resultIdRef.current) {
+        setIsPublic(newValue);
+      }
+      setHistoryRefresh((n) => n + 1);
+      return true;
+    } catch (err) {
+      throw err instanceof Error ? err : new Error('Failed to update visibility', { cause: err });
+    } finally {
+      publishingRef.current.delete(id);
+      setPublishingIds(new Set(publishingRef.current));
     }
   };
 
@@ -259,7 +289,17 @@ function App() {
 
           {result ? (
             <>
-              <AsciiOutput ascii={result.ascii} width={result.width} height={result.height} shareUrl={shareUrl} />
+              <AsciiOutput
+                key={conversionCount}
+                ascii={result.ascii}
+                width={result.width}
+                height={result.height}
+                shareUrl={shareUrl}
+                pastaId={result.id}
+                isPublic={isPublic}
+                publishing={publishingIds.has(result.id ?? '')}
+                onTogglePublic={handleTogglePublic}
+              />
             </>
           ) : (
             !isConverting && (
@@ -276,7 +316,7 @@ function App() {
         </div>
 
         <div className="history-column">
-          <HistoryPanel refreshTrigger={historyRefresh} />
+          <HistoryPanel refreshTrigger={historyRefresh} onTogglePublic={handleTogglePublic} publishingIds={publishingIds} />
         </div>
       </main>
       )}

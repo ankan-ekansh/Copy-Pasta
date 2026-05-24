@@ -1,9 +1,11 @@
-import { useEffect, useReducer, useState, useRef } from 'react';
+import { useEffect, useReducer } from 'react';
 import { Link } from 'react-router-dom';
-import { listPastas, deletePasta, setPublic, type Pasta } from '../api/pastas';
+import { listPastas, deletePasta, type Pasta } from '../api/pastas';
 
 interface HistoryPanelProps {
   refreshTrigger?: number;
+  onTogglePublic?: (id: string, newValue: boolean) => Promise<boolean>;
+  publishingIds?: Set<string>;
 }
 
 type State = { pastas: Pasta[]; loading: boolean; error: string; deleteError: string; publishError: string };
@@ -19,7 +21,7 @@ type Action =
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'fetch': return { ...state, loading: true, error: '', deleteError: '', publishError: '' };
+    case 'fetch': return { ...state, loading: state.pastas.length === 0, error: '', deleteError: '', publishError: '' };
     case 'loaded': return { ...state, pastas: action.pastas, loading: false, error: '' };
     case 'error': return { ...state, loading: false, error: action.message };
     case 'remove': return { ...state, pastas: state.pastas.filter((p) => p.id !== action.id) };
@@ -31,10 +33,8 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
+export function HistoryPanel({ refreshTrigger, onTogglePublic, publishingIds: externalPublishingIds }: HistoryPanelProps) {
   const [state, dispatch] = useReducer(reducer, { pastas: [], loading: true, error: '', deleteError: '', publishError: '' });
-  const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set());
-  const publishingRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -61,18 +61,15 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
   };
 
   const handleTogglePublic = async (id: string, currentlyPublic: boolean) => {
-    if (publishingRef.current.has(id)) return;
-    publishingRef.current.add(id);
-    setPublishingIds(new Set(publishingRef.current));
+    if (!onTogglePublic || externalPublishingIds?.has(id)) return;
     dispatch({ type: 'clear-errors' });
     try {
-      await setPublic(id, !currentlyPublic);
-      dispatch({ type: 'toggle-public', id, isPublic: !currentlyPublic });
+      const performed = await onTogglePublic(id, !currentlyPublic);
+      if (performed) {
+        dispatch({ type: 'toggle-public', id, isPublic: !currentlyPublic });
+      }
     } catch {
       dispatch({ type: 'publish-error', message: 'Failed to update visibility' });
-    } finally {
-      publishingRef.current.delete(id);
-      setPublishingIds(new Set(publishingRef.current));
     }
   };
 
@@ -118,17 +115,19 @@ export function HistoryPanel({ refreshTrigger }: HistoryPanelProps) {
               </span>
             </div>
             <div className="history-item-actions">
-              <button
-                type="button"
-                className={`history-btn ${pasta.is_public ? 'history-btn-active' : ''}`}
-                onClick={() => handleTogglePublic(pasta.id, pasta.is_public)}
-                disabled={publishingIds.has(pasta.id)}
-                aria-pressed={pasta.is_public}
-                aria-label={pasta.is_public ? 'Unpublish from gallery' : 'Publish to gallery'}
-                title={pasta.is_public ? 'Published ✓' : 'Publish to gallery'}
-              >
-                {pasta.is_public ? '🌐' : '📤'}
-              </button>
+              {onTogglePublic && (
+                <button
+                  type="button"
+                  className={`history-btn ${pasta.is_public ? 'history-btn-active' : ''}`}
+                  onClick={() => handleTogglePublic(pasta.id, pasta.is_public)}
+                  disabled={externalPublishingIds?.has(pasta.id) ?? false}
+                  aria-pressed={pasta.is_public}
+                  aria-label={pasta.is_public ? 'Unpublish from gallery' : 'Publish to gallery'}
+                  title={pasta.is_public ? 'Published ✓' : 'Publish to gallery'}
+                >
+                  {pasta.is_public ? '🌐' : '📤'}
+                </button>
+              )}
               <button
                 type="button"
                 className="history-btn"

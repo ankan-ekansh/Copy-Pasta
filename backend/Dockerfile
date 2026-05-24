@@ -6,7 +6,7 @@ COPY . .
 RUN CGO_ENABLED=0 go build -o server ./cmd/server
 
 FROM alpine:3.19
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates font-dejavu
 WORKDIR /app
 COPY --from=builder /app/server .
 EXPOSE 8080

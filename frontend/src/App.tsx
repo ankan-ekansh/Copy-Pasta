@@ -150,7 +150,7 @@ function App() {
               </div>
             </button>
 
-            <div id="controls-panel" role="region" aria-labelledby="controls-heading" className={`controls-body ${settingsOpen ? 'open' : ''}`} {...(!settingsOpen && { inert: '' })}>
+            <div id="controls-panel" role="region" aria-labelledby="controls-heading" className={`controls-body ${settingsOpen ? 'open' : ''}`} inert={!settingsOpen ? true : undefined}>
             <div className="controls-body-inner">
 
             <label className="range-control" htmlFor="width">

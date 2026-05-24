@@ -92,8 +92,8 @@ function App() {
 
   const publishingRef = useRef<Set<string>>(new Set());
 
-  const handleTogglePublic = async (id: string, newValue: boolean) => {
-    if (publishingRef.current.has(id)) return;
+  const handleTogglePublic = async (id: string, newValue: boolean): Promise<boolean> => {
+    if (publishingRef.current.has(id)) return false;
     publishingRef.current.add(id);
     setPublishingIds(new Set(publishingRef.current));
     try {
@@ -102,6 +102,7 @@ function App() {
         setIsPublic(newValue);
       }
       setHistoryRefresh((n) => n + 1);
+      return true;
     } catch (err) {
       throw err instanceof Error ? err : new Error('Failed to update visibility', { cause: err });
     } finally {

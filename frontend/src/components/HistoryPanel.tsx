@@ -4,7 +4,7 @@ import { listPastas, deletePasta, type Pasta } from '../api/pastas';
 
 interface HistoryPanelProps {
   refreshTrigger?: number;
-  onTogglePublic?: (id: string, newValue: boolean) => Promise<void>;
+  onTogglePublic?: (id: string, newValue: boolean) => Promise<boolean>;
   publishingIds?: Set<string>;
 }
 
@@ -64,8 +64,10 @@ export function HistoryPanel({ refreshTrigger, onTogglePublic, publishingIds: ex
     if (!onTogglePublic || externalPublishingIds?.has(id)) return;
     dispatch({ type: 'clear-errors' });
     try {
-      await onTogglePublic(id, !currentlyPublic);
-      dispatch({ type: 'toggle-public', id, isPublic: !currentlyPublic });
+      const performed = await onTogglePublic(id, !currentlyPublic);
+      if (performed) {
+        dispatch({ type: 'toggle-public', id, isPublic: !currentlyPublic });
+      }
     } catch {
       dispatch({ type: 'publish-error', message: 'Failed to update visibility' });
     }

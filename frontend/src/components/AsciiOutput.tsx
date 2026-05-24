@@ -8,7 +8,7 @@ interface AsciiOutputProps {
   pastaId?: string | null;
   isPublic?: boolean;
   publishing?: boolean;
-  onTogglePublic?: (id: string, newValue: boolean) => Promise<void>;
+  onTogglePublic?: (id: string, newValue: boolean) => Promise<boolean>;
 }
 
 export function AsciiOutput({ ascii, width, height, shareUrl, pastaId, isPublic = false, publishing = false, onTogglePublic }: AsciiOutputProps) {

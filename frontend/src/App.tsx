@@ -36,6 +36,7 @@ function App() {
   const [isConverting, setIsConverting] = useState(false);
   const [historyRefresh, setHistoryRefresh] = useState(0);
   const [view, setView] = useState<'app' | 'gallery'>('app');
+  const [settingsOpen, setSettingsOpen] = useState(true);
 
   const shareUrl = result?.id
     ? `${window.location.origin}/pasta/${encodeURIComponent(result.id)}`
@@ -121,13 +122,24 @@ function App() {
           />
 
           <section className="controls-card">
-            <div className="controls-header">
+            <button
+              type="button"
+              className="controls-header controls-toggle"
+              onClick={() => setSettingsOpen(!settingsOpen)}
+              aria-expanded={settingsOpen}
+            >
               <div>
                 <p className="eyebrow">Season to taste</p>
                 <h2>Conversion settings</h2>
               </div>
-              <span className="width-pill">{width} chars wide</span>
-            </div>
+              <div className="controls-header-right">
+                <span className="width-pill">{width} chars wide</span>
+                <span className={`controls-chevron ${settingsOpen ? 'open' : ''}`}>▾</span>
+              </div>
+            </button>
+
+            <div className={`controls-body ${settingsOpen ? 'open' : ''}`}>
+            <div className="controls-body-inner">
 
             <label className="range-control" htmlFor="width">
               <span>Output width</span>
@@ -219,6 +231,8 @@ function App() {
             </p>
 
             {error && <p className="error-banner">⚠️ {error}</p>}
+            </div>
+            </div>
           </section>
         </div>
 
@@ -233,28 +247,7 @@ function App() {
 
           {result ? (
             <>
-              <AsciiOutput ascii={result.ascii} width={result.width} height={result.height} />
-              {shareUrl && (
-                <section className="share-card">
-                  <p className="eyebrow">🔗 Share this pasta</p>
-                  <div className="share-link-row">
-                    <input
-                      type="text"
-                      readOnly
-                      aria-label="Shareable pasta link"
-                      value={shareUrl}
-                      className="share-link-input"
-                    />
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={() => { navigator.clipboard?.writeText(shareUrl)?.catch(() => {}); }}
-                    >
-                      📋 Copy link
-                    </button>
-                  </div>
-                </section>
-              )}
+              <AsciiOutput ascii={result.ascii} width={result.width} height={result.height} shareUrl={shareUrl} />
             </>
           ) : (
             !isConverting && (

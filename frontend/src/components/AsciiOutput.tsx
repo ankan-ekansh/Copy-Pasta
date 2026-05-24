@@ -1,26 +1,51 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface AsciiOutputProps {
   ascii: string;
   width: number;
   height: number;
+  shareUrl?: string | null;
 }
 
-export function AsciiOutput({ ascii, width, height }: AsciiOutputProps) {
+export function AsciiOutput({ ascii, width, height, shareUrl }: AsciiOutputProps) {
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const preRef = useRef<HTMLPreElement>(null);
+  const [hasOverflowX, setHasOverflowX] = useState(false);
 
   useEffect(() => {
-    if (!copied) {
-      return;
-    }
-
+    if (!copied) return;
     const timeoutId = window.setTimeout(() => setCopied(false), 2000);
     return () => window.clearTimeout(timeoutId);
   }, [copied]);
 
+  useEffect(() => {
+    if (!linkCopied) return;
+    const timeoutId = window.setTimeout(() => setLinkCopied(false), 2000);
+    return () => window.clearTimeout(timeoutId);
+  }, [linkCopied]);
+
+  // Detect horizontal overflow for scroll indicator
+  useEffect(() => {
+    const el = preRef.current;
+    if (!el) return;
+    const check = () => setHasOverflowX(el.scrollWidth > el.clientWidth);
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ascii]);
+
   const handleCopy = async () => {
     await navigator.clipboard.writeText(ascii);
     setCopied(true);
+  };
+
+  const handleCopyLink = () => {
+    if (shareUrl) {
+      navigator.clipboard?.writeText(shareUrl)?.catch(() => {});
+      setLinkCopied(true);
+    }
   };
 
   return (
@@ -37,7 +62,24 @@ export function AsciiOutput({ ascii, width, height }: AsciiOutputProps) {
       <p className="ascii-dimensions">
         {width} × {height} chars
       </p>
-      <pre className="ascii-output">{ascii}</pre>
+      <div className={`ascii-output-wrapper ${hasOverflowX ? 'has-overflow-x' : ''}`}>
+        <pre className="ascii-output" ref={preRef}>{ascii}</pre>
+      </div>
+      {shareUrl && (
+        <div className="ascii-share-row">
+          <span className="ascii-share-label">🔗</span>
+          <input
+            type="text"
+            readOnly
+            aria-label="Shareable pasta link"
+            value={shareUrl}
+            className="share-link-input"
+          />
+          <button type="button" className="secondary-button share-copy-btn" onClick={handleCopyLink}>
+            {linkCopied ? 'Copied!' : '📋 Copy link'}
+          </button>
+        </div>
+      )}
     </section>
   );
 }
